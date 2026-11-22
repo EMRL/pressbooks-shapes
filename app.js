@@ -1,47 +1,33 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CENTER = 300;
 const controls = {
-  petals: document.querySelector("#petals"),
+  rings: document.querySelector("#rings"),
+  segments: document.querySelector("#segments"),
+  spacing: document.querySelector("#spacing"),
   core: document.querySelector("#core"),
-  width: document.querySelector("#width"),
-  roundness: document.querySelector("#roundness"),
-  variation: document.querySelector("#variation"),
+  scale: document.querySelector("#scale"),
   rotation: document.querySelector("#rotation"),
-  fill: document.querySelector("#fill-color"),
+  colors: Array.from(document.querySelectorAll("[data-segment-color]")),
+  coreColor: document.querySelector("#core-color"),
   background: document.querySelector("#background")
 };
 const outputs = {
-  petals: document.querySelector("#petals-output"),
+  rings: document.querySelector("#rings-output"),
+  segments: document.querySelector("#segments-output"),
+  spacing: document.querySelector("#spacing-output"),
   core: document.querySelector("#core-output"),
-  width: document.querySelector("#width-output"),
-  roundness: document.querySelector("#roundness-output"),
-  variation: document.querySelector("#variation-output"),
+  scale: document.querySelector("#scale-output"),
   rotation: document.querySelector("#rotation-output")
 };
 const preview = document.querySelector("#shape-preview");
 const art = document.querySelector("#shape-art");
 const stage = document.querySelector("#preview-stage");
-let seed = 4821;
 
-function seededRandom(value) {
-  let state = value >>> 0;
-  return function () {
-    state += 0x6D2B79F5;
-    let number = state;
-    number = Math.imul(number ^ (number >>> 15), number | 1);
-    number ^= number + Math.imul(number ^ (number >>> 7), number | 61);
-    return ((number ^ (number >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function pointAt(radius, lateral, angle) {
-  const alongX = Math.cos(angle);
-  const alongY = Math.sin(angle);
-  const acrossX = -alongY;
-  const acrossY = alongX;
+function pointAt(radius, angle) {
+  const radians = angle * Math.PI / 180;
   return {
-    x: CENTER + alongX * radius + acrossX * lateral,
-    y: CENTER + alongY * radius + acrossY * lateral
+    x: CENTER + Math.cos(radians) * radius,
+    y: CENTER + Math.sin(radians) * radius
   };
 }
 
@@ -49,54 +35,77 @@ function rounded(value) {
   return Number(value.toFixed(2));
 }
 
-function createPetal(index, settings, random) {
-  const step = Math.PI * 2 / settings.petals;
-  const baseAngle = settings.rotation * Math.PI / 180 + index * step;
-  const jitter = (random() * 2 - 1) * settings.variation;
-  const scale = Math.max(0.65, 1 + jitter * 0.42);
-  const angle = baseAngle + (random() * 2 - 1) * step * settings.variation * 0.12;
-  const outer = Math.min(270, 250 * scale);
-  const inner = outer * settings.core / 100;
-  const width = Math.min(outer * 0.68, outer * step * 0.48 * settings.width);
-  const length = outer - inner;
-  const roundness = settings.roundness;
-  const tipHalfWidth = width * (0.025 + roundness * 0.43);
-  const capDepth = Math.min(width * 0.5, length * 0.32) * roundness;
-  const capBase = outer - capDepth;
-  const start = pointAt(inner, -width / 2, angle);
-  const leftCap = pointAt(capBase, -tipHalfWidth, angle);
-  const rightCap = pointAt(capBase, tipHalfWidth, angle);
-  const end = pointAt(inner, width / 2, angle);
-  const leftControl = pointAt(inner + length * 0.38, -width * 0.53, angle);
-  const leftShoulder = pointAt(capBase - capDepth * 0.28, -tipHalfWidth, angle);
-  const rightShoulder = pointAt(capBase - capDepth * 0.28, tipHalfWidth, angle);
-  const rightControl = pointAt(inner + length * 0.38, width * 0.53, angle);
-  const capLeftControl = pointAt(outer, -tipHalfWidth, angle);
-  const capRightControl = pointAt(outer, tipHalfWidth, angle);
-  const pair = (point) => `${rounded(point.x)} ${rounded(point.y)}`;
+function pointString(point) {
+  return rounded(point.x) + " " + rounded(point.y);
+}
+
+function createRingSegment(outerRadius, innerRadius, startAngle, endAngle) {
+  const span = endAngle - startAngle;
+  if (innerRadius <= 0.01 && span >= 359.999) {
+    const first = pointAt(outerRadius, startAngle);
+    const opposite = pointAt(outerRadius, startAngle + 180);
+    return "M " + pointString(first) + " A " + outerRadius + " " + outerRadius + " 0 1 1 " + pointString(opposite) + " A " + outerRadius + " " + outerRadius + " 0 1 1 " + pointString(first) + " Z";
+  }
+  if (innerRadius <= 0.01) {
+    const outerStart = pointAt(outerRadius, startAngle);
+    const outerEnd = pointAt(outerRadius, endAngle);
+    return "M " + pointString(outerStart) + " A " + outerRadius + " " + outerRadius + " 0 " + (span > 180 ? 1 : 0) + " 1 " + pointString(outerEnd) + " L " + CENTER + " " + CENTER + " Z";
+  }
+  if (span >= 359.999) {
+    const outerTop = pointAt(outerRadius, startAngle);
+    const outerBottom = pointAt(outerRadius, startAngle + 180);
+    const innerTop = pointAt(innerRadius, startAngle);
+    const innerBottom = pointAt(innerRadius, startAngle + 180);
+    return [
+      "M " + pointString(outerTop),
+      "A " + outerRadius + " " + outerRadius + " 0 1 1 " + pointString(outerBottom),
+      "A " + outerRadius + " " + outerRadius + " 0 1 1 " + pointString(outerTop),
+      "M " + pointString(innerTop),
+      "A " + innerRadius + " " + innerRadius + " 0 1 0 " + pointString(innerBottom),
+      "A " + innerRadius + " " + innerRadius + " 0 1 0 " + pointString(innerTop),
+      "Z"
+    ].join(" ");
+  }
+
+  const outerStart = pointAt(outerRadius, startAngle);
+  const outerEnd = pointAt(outerRadius, endAngle);
+  const innerEnd = pointAt(innerRadius, endAngle);
+  const innerStart = pointAt(innerRadius, startAngle);
+  const largeArc = span > 180 ? 1 : 0;
 
   return [
-    `M ${pair(start)}`,
-    `C ${pair(leftControl)} ${pair(leftShoulder)} ${pair(leftCap)}`,
-    `C ${pair(capLeftControl)} ${pair(capRightControl)} ${pair(rightCap)}`,
-    `C ${pair(rightShoulder)} ${pair(rightControl)} ${pair(end)}`,
+    "M " + pointString(outerStart),
+    "A " + outerRadius + " " + outerRadius + " 0 " + largeArc + " 1 " + pointString(outerEnd),
+    "L " + pointString(innerEnd),
+    "A " + innerRadius + " " + innerRadius + " 0 " + largeArc + " 0 " + pointString(innerStart),
     "Z"
   ].join(" ");
 }
 
-function render() {
-  const settings = {
-    petals: Number(controls.petals.value),
-    core: Number(controls.core.value),
-    width: Number(controls.width.value) / 100,
-    roundness: Number(controls.roundness.value) / 100,
-    variation: Number(controls.variation.value) / 100,
+function readSettings() {
+  return {
+    rings: Number(controls.rings.value),
+    segments: Number(controls.segments.value),
+    spacing: Number(controls.spacing.value),
+    core: Number(controls.core.value) / 100,
+    scale: Number(controls.scale.value) / 100,
     rotation: Number(controls.rotation.value),
-    fill: controls.fill.value.toUpperCase(),
+    colors: controls.colors.map(function (input) { return input.value.toUpperCase(); }),
+    coreColor: controls.coreColor.value.toUpperCase(),
     background: controls.background.checked
   };
-  const random = seededRandom(seed);
+}
+
+function render() {
+  const settings = readSettings();
+  const outerRadius = 245 * settings.scale;
+  const coreRadius = outerRadius * settings.core;
+  const radialSpace = Math.max(1, outerRadius - coreRadius);
+  const gap = Math.min(settings.spacing, radialSpace / (settings.rings * 2));
+  const ringWidth = (radialSpace - gap * (settings.rings - 1)) / settings.rings;
+  const segmentAngle = 360 / settings.segments;
   art.replaceChildren();
+
   if (settings.background) {
     const background = document.createElementNS(SVG_NS, "rect");
     background.setAttribute("width", "600");
@@ -104,38 +113,50 @@ function render() {
     background.setAttribute("fill", "#FFFFFF");
     art.append(background);
   }
-  for (let index = 0; index < settings.petals; index += 1) {
-    const petal = document.createElementNS(SVG_NS, "path");
-    petal.setAttribute("d", createPetal(index, settings, random));
-    petal.setAttribute("fill", settings.fill);
-    art.append(petal);
+
+  for (let ring = 0; ring < settings.rings; ring += 1) {
+    const outer = outerRadius - ring * (ringWidth + gap);
+    const inner = outer - ringWidth;
+
+    for (let segment = 0; segment < settings.segments; segment += 1) {
+      const start = 180 + settings.rotation + segment * segmentAngle;
+      const end = start + segmentAngle;
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", createRingSegment(outer, inner, start, end));
+      path.setAttribute("fill", settings.colors[segment % settings.colors.length]);
+      path.setAttribute("fill-rule", "evenodd");
+      path.dataset.ring = String(ring + 1);
+      path.dataset.segment = String(segment + 1);
+      art.append(path);
+    }
   }
-  outputs.petals.value = String(settings.petals);
-  outputs.core.value = String(settings.core) + "%";
-  outputs.width.value = String(Math.round(settings.width * 100)) + "%";
-  outputs.roundness.value = String(Math.round(settings.roundness * 100)) + "%";
-  outputs.variation.value = String(Math.round(settings.variation * 100)) + "%";
-  outputs.rotation.value = String(settings.rotation) + "°";
-  document.querySelector("#seed-readout").textContent = "SEED " + seed;
-  document.querySelector("#shape-count").textContent = settings.petals + " PETALS";
-  document.querySelector("#variation-readout").textContent = "VARIATION · " + Math.round(settings.variation * 100) + "%";
-  document.querySelector("#color-value").textContent = settings.fill;
-  document.querySelector("#color-swatch").style.backgroundColor = settings.fill;
+
+  if (settings.core > 0) {
+    const core = document.createElementNS(SVG_NS, "circle");
+    core.setAttribute("cx", String(CENTER));
+    core.setAttribute("cy", String(CENTER));
+    core.setAttribute("r", String(rounded(coreRadius)));
+    core.setAttribute("fill", settings.coreColor);
+    art.append(core);
+  }
+
+  outputs.rings.value = settings.rings + (settings.rings === 1 ? " ring" : " rings");
+  outputs.segments.value = settings.segments + (settings.segments === 1 ? " segment" : " segments");
+  outputs.spacing.value = settings.spacing + " px";
+  outputs.core.value = Math.round(settings.core * 100) + "%";
+  outputs.scale.value = Math.round(settings.scale * 100) + "%";
+  outputs.rotation.value = settings.rotation + "°";
+  document.querySelector("#shape-count").textContent = settings.rings + " RINGS";
+  document.querySelector("#variation-readout").textContent = settings.segments + " SEGMENTS";
   stage.classList.toggle("has-background", settings.background);
-  preview.querySelector("#shape-desc").textContent = "A radial flower made from " + settings.petals + " rounded petals. Tip roundness is " + Math.round(settings.roundness * 100) + " percent.";
+  preview.querySelector("#shape-desc").textContent =
+    settings.rings + " concentric rings divided into " + settings.segments + " colored segments.";
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
     const max = Number(input.max);
-    const progress = (Number(input.value) - min) / (max - min) * 100;
-    input.style.setProperty("--range-progress", progress + "%");
+    const percentage = ((Number(input.value) - min) / (max - min)) * 100;
+    input.style.setProperty("--range-progress", percentage + "%");
   });
-}
-
-function newSeed() {
-  let next = seed;
-  while (next === seed) next = Math.floor(Math.random() * 999999) + 1;
-  seed = next;
-  render();
 }
 
 function buildExportSvg() {
@@ -150,15 +171,14 @@ function buildExportSvg() {
 
   const title = document.createElementNS(SVG_NS, "title");
   title.setAttribute("id", "export-title");
-  title.textContent = `Pressbooks Shapes radial flower, seed ${seed}`;
+  title.textContent = "Pressbooks Shapes concentric ring composition";
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
-  description.textContent = `${controls.petals.value} petals with ${controls.roundness.value}% tip roundness.`;
+  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " segments.";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
 
-  const source = new XMLSerializer().serializeToString(clone);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${source}`;
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone);
 }
 
 function downloadSvg() {
@@ -166,14 +186,22 @@ function downloadSvg() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `pressbooks-radial-${seed}.svg`;
+  anchor.download = "pressbooks-concentric-rings.svg";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
 }
 
-Object.values(controls).forEach(function (input) { input.addEventListener("input", render); });
-document.querySelector("#random-seed").addEventListener("click", newSeed);
+Object.values(controls).forEach(function (control) {
+  if (Array.isArray(control)) {
+    control.forEach(function (input) { input.addEventListener("input", render); });
+  } else if (control && control.type !== "checkbox" && control.type !== "color") {
+    control.addEventListener("input", render);
+  } else if (control) {
+    control.addEventListener("input", render);
+    control.addEventListener("change", render);
+  }
+});
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
 render();
