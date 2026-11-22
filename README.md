@@ -10,7 +10,7 @@ The app does not require a build step or package installation.
 
 ## Radial generator
 
-Adjust petal count, core size, petal width, variation, and rotation.
+Adjust petal count, core size, petal width, tip roundness, variation, and rotation.
 Change the fill color or include a white background.
 The preview updates when you change a control.
 
