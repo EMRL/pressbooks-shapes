@@ -4,6 +4,7 @@ const controls = {
   petals: document.querySelector("#petals"),
   core: document.querySelector("#core"),
   width: document.querySelector("#width"),
+  roundness: document.querySelector("#roundness"),
   variation: document.querySelector("#variation"),
   rotation: document.querySelector("#rotation"),
   fill: document.querySelector("#fill-color"),
@@ -13,6 +14,7 @@ const outputs = {
   petals: document.querySelector("#petals-output"),
   core: document.querySelector("#core-output"),
   width: document.querySelector("#width-output"),
+  roundness: document.querySelector("#roundness-output"),
   variation: document.querySelector("#variation-output"),
   rotation: document.querySelector("#rotation-output")
 };
@@ -32,8 +34,15 @@ function seededRandom(value) {
   };
 }
 
-function pointAt(radius, angle) {
-  return { x: CENTER + Math.cos(angle) * radius, y: CENTER + Math.sin(angle) * radius };
+function pointAt(radius, lateral, angle) {
+  const alongX = Math.cos(angle);
+  const alongY = Math.sin(angle);
+  const acrossX = -alongY;
+  const acrossY = alongX;
+  return {
+    x: CENTER + alongX * radius + acrossX * lateral,
+    y: CENTER + alongY * radius + acrossY * lateral
+  };
 }
 
 function rounded(value) {
@@ -49,16 +58,30 @@ function createPetal(index, settings, random) {
   const outer = Math.min(270, 250 * scale);
   const inner = outer * settings.core / 100;
   const width = Math.min(outer * 0.68, outer * step * 0.48 * settings.width);
-  const tipWidth = width * (0.18 + random() * 0.08 * settings.variation);
-  const inset = inner + (outer - inner) * 0.42;
-  const start = pointAt(inner, angle - width / inner * 0.5);
-  const end = pointAt(inner, angle + width / inner * 0.5);
-  const left = pointAt(inset, angle - tipWidth / outer * 0.5);
-  const tip = pointAt(outer, angle);
-  const right = pointAt(inset, angle + tipWidth / outer * 0.5);
-  return "M " + rounded(start.x) + " " + rounded(start.y) +
-    " Q " + rounded(left.x) + " " + rounded(left.y) + " " + rounded(tip.x) + " " + rounded(tip.y) +
-    " Q " + rounded(right.x) + " " + rounded(right.y) + " " + rounded(end.x) + " " + rounded(end.y) + " Z";
+  const length = outer - inner;
+  const roundness = settings.roundness;
+  const tipHalfWidth = width * (0.025 + roundness * 0.43);
+  const capDepth = Math.min(width * 0.5, length * 0.32) * roundness;
+  const capBase = outer - capDepth;
+  const start = pointAt(inner, -width / 2, angle);
+  const leftCap = pointAt(capBase, -tipHalfWidth, angle);
+  const rightCap = pointAt(capBase, tipHalfWidth, angle);
+  const end = pointAt(inner, width / 2, angle);
+  const leftControl = pointAt(inner + length * 0.38, -width * 0.53, angle);
+  const leftShoulder = pointAt(capBase - capDepth * 0.28, -tipHalfWidth * 0.92, angle);
+  const rightShoulder = pointAt(capBase - capDepth * 0.28, tipHalfWidth * 0.92, angle);
+  const rightControl = pointAt(inner + length * 0.38, width * 0.53, angle);
+  const capLeftControl = pointAt(outer, -tipHalfWidth, angle);
+  const capRightControl = pointAt(outer, tipHalfWidth, angle);
+  const pair = (point) => `${number(point.x)} ${number(point.y)}`;
+
+  return [
+    `M ${pair(start)}`,
+    `C ${pair(leftControl)} ${pair(leftShoulder)} ${pair(leftCap)}`,
+    `C ${pair(capLeftControl)} ${pair(capRightControl)} ${pair(rightCap)}`,
+    `C ${pair(rightShoulder)} ${pair(rightControl)} ${pair(end)}`,
+    "Z"
+  ].join(" ");
 }
 
 function render() {
@@ -66,6 +89,7 @@ function render() {
     petals: Number(controls.petals.value),
     core: Number(controls.core.value),
     width: Number(controls.width.value) / 100,
+    roundness: Number(controls.roundness.value) / 100,
     variation: Number(controls.variation.value) / 100,
     rotation: Number(controls.rotation.value),
     fill: controls.fill.value.toUpperCase(),
@@ -89,6 +113,7 @@ function render() {
   outputs.petals.value = String(settings.petals);
   outputs.core.value = String(settings.core) + "%";
   outputs.width.value = String(Math.round(settings.width * 100)) + "%";
+  outputs.roundness.value = String(Math.round(settings.roundness * 100)) + "%";
   outputs.variation.value = String(Math.round(settings.variation * 100)) + "%";
   outputs.rotation.value = String(settings.rotation) + "°";
   document.querySelector("#seed-readout").textContent = "SEED " + seed;
@@ -97,7 +122,7 @@ function render() {
   document.querySelector("#color-value").textContent = settings.fill;
   document.querySelector("#color-swatch").style.backgroundColor = settings.fill;
   stage.classList.toggle("has-background", settings.background);
-  preview.querySelector("#shape-desc").textContent = "A radial flower made from " + settings.petals + " petals. Variation is " + Math.round(settings.variation * 100) + " percent.";
+  preview.querySelector("#shape-desc").textContent = "A radial flower made from " + settings.petals + " rounded petals. Tip roundness is " + Math.round(settings.roundness * 100) + " percent.";
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
     const max = Number(input.max);
@@ -113,25 +138,35 @@ function newSeed() {
   render();
 }
 
-function downloadSvg() {
+function buildExportSvg() {
   const clone = preview.cloneNode(true);
-  clone.querySelector("#shape-title").remove();
-  clone.querySelector("#shape-desc").remove();
+  clone.querySelector("#shape-title")?.remove();
+  clone.querySelector("#shape-desc")?.remove();
   clone.setAttribute("xmlns", SVG_NS);
   clone.setAttribute("width", "600");
   clone.setAttribute("height", "600");
+  clone.setAttribute("role", "img");
+  clone.setAttribute("aria-labelledby", "export-title export-desc");
+
   const title = document.createElementNS(SVG_NS, "title");
-  title.textContent = "Pressbooks Shapes radial form, seed " + seed;
+  title.setAttribute("id", "export-title");
+  title.textContent = `Pressbooks Shapes radial flower, seed ${seed}`;
   const description = document.createElementNS(SVG_NS, "desc");
-  description.textContent = "A radial form with " + controls.petals.value + " petals.";
+  description.setAttribute("id", "export-desc");
+  description.textContent = `${controls.petals.value} petals with ${controls.roundness.value}% tip roundness.`;
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
+
   const source = new XMLSerializer().serializeToString(clone);
-  const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${source}`;
+}
+
+function downloadSvg() {
+  const blob = new Blob([buildExportSvg()], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "pressbooks-radial-" + seed + ".svg";
+  anchor.download = `pressbooks-radial-${seed}.svg`;
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -142,33 +177,3 @@ Object.values(controls).forEach(function (input) { input.addEventListener("input
 document.querySelector("#random-seed").addEventListener("click", newSeed);
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
 render();
-
-
-function downloadSvg() {
-  const clone = preview.cloneNode(true);
-  clone.querySelector("#shape-title").remove();
-  clone.querySelector("#shape-desc").remove();
-  clone.setAttribute("xmlns", SVG_NS);
-  clone.setAttribute("width", "600");
-  clone.setAttribute("height", "600");
-  clone.setAttribute("role", "img");
-  clone.setAttribute("aria-labelledby", "export-title export-desc");
-  const title = document.createElementNS(SVG_NS, "title");
-  title.setAttribute("id", "export-title");
-  title.textContent = "Pressbooks Shapes radial form, seed " + seed;
-  const description = document.createElementNS(SVG_NS, "desc");
-  description.setAttribute("id", "export-desc");
-  description.textContent = "A radial form with " + controls.petals.value + " petals.";
-  clone.insertBefore(description, clone.firstChild);
-  clone.insertBefore(title, clone.firstChild);
-  const source = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + new XMLSerializer().serializeToString(clone);
-  const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "pressbooks-radial-" + seed + ".svg";
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
