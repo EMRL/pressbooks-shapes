@@ -73,7 +73,7 @@ function createPetal(index, settings, random) {
   const rightControl = pointAt(inner + length * 0.38, width * 0.53, angle);
   const capLeftControl = pointAt(outer, -tipHalfWidth, angle);
   const capRightControl = pointAt(outer, tipHalfWidth, angle);
-  const pair = (point) => `${number(point.x)} ${number(point.y)}`;
+  const pair = (point) => `${rounded(point.x)} ${rounded(point.y)}`;
 
   return [
     `M ${pair(start)}`,
