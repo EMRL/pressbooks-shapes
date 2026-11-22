@@ -142,3 +142,33 @@ Object.values(controls).forEach(function (input) { input.addEventListener("input
 document.querySelector("#random-seed").addEventListener("click", newSeed);
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
 render();
+
+
+function downloadSvg() {
+  const clone = preview.cloneNode(true);
+  clone.querySelector("#shape-title").remove();
+  clone.querySelector("#shape-desc").remove();
+  clone.setAttribute("xmlns", SVG_NS);
+  clone.setAttribute("width", "600");
+  clone.setAttribute("height", "600");
+  clone.setAttribute("role", "img");
+  clone.setAttribute("aria-labelledby", "export-title export-desc");
+  const title = document.createElementNS(SVG_NS, "title");
+  title.setAttribute("id", "export-title");
+  title.textContent = "Pressbooks Shapes radial form, seed " + seed;
+  const description = document.createElementNS(SVG_NS, "desc");
+  description.setAttribute("id", "export-desc");
+  description.textContent = "A radial form with " + controls.petals.value + " petals.";
+  clone.insertBefore(description, clone.firstChild);
+  clone.insertBefore(title, clone.firstChild);
+  const source = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + new XMLSerializer().serializeToString(clone);
+  const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "pressbooks-radial-" + seed + ".svg";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
