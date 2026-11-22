@@ -23,45 +23,53 @@
     <main id="main" class="layout">
       <section class="intro" aria-labelledby="page-title">
         <div class="eyebrow"><span class="eyebrow-line"></span> Shape generator</div>
-        <h1 id="page-title">Radial form</h1>
-        <p>Set the structure. Add measured variation. Export a clean SVG.</p>
+        <h1 id="page-title">Concentric composition</h1>
+        <p>Build a precise radial mark from editable rings and colour segments.</p>
       </section>
       <div class="workspace">
         <section class="preview-panel" aria-label="Shape preview">
           <div class="preview-head">
             <div><span class="panel-kicker">LIVE PREVIEW</span><span class="preview-size">600 × 600</span></div>
-            <span class="seed-badge"><span class="seed-dot"></span><span id="seed-readout">SEED 4821</span></span>
+            <span class="seed-badge"><span class="seed-dot"></span><span>CONCENTRIC FORM</span></span>
           </div>
           <div class="preview-stage" id="preview-stage">
             <svg id="shape-preview" viewBox="0 0 600 600" role="img" aria-labelledby="shape-title shape-desc" xmlns="http://www.w3.org/2000/svg">
-              <title id="shape-title">Radial shape preview</title>
-              <desc id="shape-desc">A radial flower made from repeated petals.</desc>
+              <title id="shape-title">Concentric ring preview</title>
+              <desc id="shape-desc">A composition of colored concentric rings.</desc>
               <g id="shape-art"></g>
             </svg>
           </div>
-          <div class="preview-foot"><span id="shape-count">12 PETALS</span><span id="variation-readout">VARIATION · 22%</span></div>
+          <div class="preview-foot"><span id="shape-count">4 RINGS</span><span id="variation-readout">4 SEGMENTS</span></div>
         </section>
         <aside class="controls-panel" aria-label="Shape controls">
           <div class="controls-head">
-            <div><span class="panel-kicker">DESIGN CONTROLS</span><h2>Adjust the form</h2></div>
-            <button id="random-seed" class="icon-button" type="button" aria-label="Generate a new variation" title="Generate a new variation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.6-2L20 9M4 15l2.8 2a7 7 0 0 0 11.6-2"/></svg></button>
+            <div><span class="panel-kicker">DESIGN CONTROLS</span><h2>Build the composition</h2></div>
           </div>
-          <div class="control-group"><div class="control-label"><label for="petals">Petals</label><output id="petals-output" for="petals">6</output></div><input id="petals" name="petals" type="range" min="6" max="32" value="6" step="1"><div class="range-ends"><span>6</span><span>32</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="core">Core size</label><output id="core-output" for="core">34%</output></div><input id="core" name="core" type="range" min="16" max="62" value="34" step="1"><div class="range-ends"><span>Small</span><span>Large</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="width">Petal width</label><output id="width-output" for="width">82%</output></div><input id="width" name="width" type="range" min="34" max="100" value="82" step="1"><div class="range-ends"><span>Narrow</span><span>Wide</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="roundness">Tip roundness</label><output id="roundness-output" for="roundness">78%</output></div><input id="roundness" name="roundness" type="range" min="0" max="100" value="78" step="1"><div class="range-ends"><span>Pointed</span><span>Rounded</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">8%</output></div><input id="variation" name="variation" type="range" min="0" max="60" value="8" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">4 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="segments">Segments</label><output id="segments-output" for="segments">4 segments</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="spacing">Ring spacing</label><output id="spacing-output" for="spacing">12 px</output></div><input id="spacing" name="spacing" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>Tight</span><span>Open</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="core">Center size</label><output id="core-output" for="core">16%</output></div><input id="core" name="core" type="range" min="0" max="45" value="16" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="scale">Scale and crop</label><output id="scale-output" for="scale">125%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="125" step="1"><div class="range-ends"><span>Fit</span><span>Crop</span></div></div>
           <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"></div>
           <div class="divider"></div>
+          <fieldset class="palette-control">
+            <legend>Segment colours</legend>
+            <div class="palette-swatches">
+              <label class="palette-swatch" style="--swatch:#b93632"><span>1</span><input data-segment-color type="color" value="#b93632" aria-label="Segment colour 1"></label>
+              <label class="palette-swatch" style="--swatch:#5c9eac"><span>2</span><input data-segment-color type="color" value="#5c9eac" aria-label="Segment colour 2"></label>
+              <label class="palette-swatch" style="--swatch:#f2b128"><span>3</span><input data-segment-color type="color" value="#f2b128" aria-label="Segment colour 3"></label>
+              <label class="palette-swatch" style="--swatch:#00a181"><span>4</span><input data-segment-color type="color" value="#00a181" aria-label="Segment colour 4"></label>
+            </div>
+          </fieldset>
           <div class="bottom-controls">
-            <label class="color-control" for="fill-color"><span>Fill color</span><span class="color-value"><span id="color-swatch" class="color-swatch"></span><code id="color-value">#315C72</code></span><input id="fill-color" type="color" value="#315c72" aria-label="Fill color"></label>
+            <label class="color-control" for="core-color"><span>Center color</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="core-color" type="color" value="#a9aaa9" aria-label="Center color"></label>
             <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
           </div>
           <div class="export-row"><button class="export-button" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
-          <p class="export-note">The SVG uses a 600 × 600 viewBox. Background stays transparent by default.</p>
+          <p class="export-note">Adjust the ring geometry, sector count, colour order, and crop. Export a 600 × 600 SVG.</p>
         </aside>
       </div>
-      <footer class="page-footer"><span>PRESSBOOKS SHAPES</span><span>RADIAL GENERATOR · SVG EXPORT</span></footer>
+      <footer class="page-footer"><span>PRESSBOOKS SHAPES</span><span>CONCENTRIC COMPOSITION · SVG EXPORT</span></footer>
     </main>
   </body>
 </html>
