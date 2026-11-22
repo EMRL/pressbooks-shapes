@@ -68,8 +68,8 @@ function createPetal(index, settings, random) {
   const rightCap = pointAt(capBase, tipHalfWidth, angle);
   const end = pointAt(inner, width / 2, angle);
   const leftControl = pointAt(inner + length * 0.38, -width * 0.53, angle);
-  const leftShoulder = pointAt(capBase - capDepth * 0.28, -tipHalfWidth * 0.92, angle);
-  const rightShoulder = pointAt(capBase - capDepth * 0.28, tipHalfWidth * 0.92, angle);
+  const leftShoulder = pointAt(capBase - capDepth * 0.28, -tipHalfWidth, angle);
+  const rightShoulder = pointAt(capBase - capDepth * 0.28, tipHalfWidth, angle);
   const rightControl = pointAt(inner + length * 0.38, width * 0.53, angle);
   const capLeftControl = pointAt(outer, -tipHalfWidth, angle);
   const capRightControl = pointAt(outer, tipHalfWidth, angle);
