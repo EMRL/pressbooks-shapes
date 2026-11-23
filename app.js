@@ -32,10 +32,16 @@ const cellEditor = {
   label: document.querySelector("#selected-cell-label"),
   color: document.querySelector("#cell-color"),
   empty: document.querySelector("#cell-empty"),
-  reset: document.querySelector("#reset-cell-color")
+  reset: document.querySelector("#reset-cell-color"),
+  positionTitle: document.querySelector("#position-title"),
+  x: document.querySelector("#segment-x"),
+  y: document.querySelector("#segment-y"),
+  xOutput: document.querySelector("#segment-x-output"),
+  yOutput: document.querySelector("#segment-y-output")
 };
 const cellColors = new Map();
 const emptyCells = new Set();
+const segmentOffsets = new Map();
 let selectedCell = { ring: 0, segment: 0 };
 
 function cellKey(ring, segment) {
@@ -161,6 +167,8 @@ function render() {
       const path = document.createElementNS(SVG_NS, "path");
       path.setAttribute("d", createRingSegment(outer, inner, start, end));
       path.setAttribute("fill", cellColor(settings, ring, segment));
+      const segmentOffset = segmentOffsets.get(segment) || { x: 0, y: 0 };
+      path.setAttribute("transform", "translate(" + segmentOffset.x + " " + segmentOffset.y + ")");
       path.setAttribute("fill-rule", "evenodd");
       path.dataset.ring = String(ring + 1);
       path.dataset.segment = String(segment + 1);
@@ -264,6 +272,12 @@ function renderSegmentEditor(settings) {
   cellEditor.color.value = cellColor(settings, selectedCell.ring, selectedCell.segment);
   cellEditor.empty.checked = emptyCells.has(selectedKey);
   cellEditor.reset.disabled = !cellColors.has(selectedKey);
+  const position = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
+  cellEditor.positionTitle.textContent = (settings.segments === 4 ? "Move selected quadrant " : "Move selected segment ") + (selectedCell.segment + 1);
+  cellEditor.x.value = String(position.x);
+  cellEditor.y.value = String(position.y);
+  cellEditor.xOutput.value = position.x + " units";
+  cellEditor.yOutput.value = position.y + " units";
 }
 
 function seededUnit(value) {
@@ -316,6 +330,13 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
+function updateSegmentOffset(axis, value) {
+  const current = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
+  segmentOffsets.set(selectedCell.segment, { ...current, [axis]: Number(value) });
+  render();
+}
+cellEditor.x.addEventListener("input", function () { updateSegmentOffset("x", cellEditor.x.value); });
+cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", cellEditor.y.value); });
 cellEditor.color.addEventListener("input", function () {
   cellColors.set(cellKey(selectedCell.ring, selectedCell.segment), cellEditor.color.value.toUpperCase());
   render();

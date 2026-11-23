@@ -84,6 +84,13 @@ input[type="range"]:focus-visible { outline: 2px solid #8faab0; outline-offset: 
 .segment-cell:focus-visible, .reset-cell-button:focus-visible { outline: 2px solid #8faab0; outline-offset: 2px; }
 .cell-editor { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; }
 .cell-editor output { grid-column: 1 / -1; color: var(--accent); font-family: var(--mono); font-size: 10px; }
+.segment-position { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.segment-position .control-label { margin-bottom: 4px; color: #334a52; font-size: 10px; }
+.segment-position .control-label strong { font-weight: 500; }
+.segment-position .segment-editor-help { margin-bottom: 8px; }
+.position-axis { display: flex; align-items: baseline; justify-content: space-between; margin: 10px 0 7px; color: #485c62; font-size: 10px; }
+.position-axis output { color: var(--accent); font-family: var(--mono); font-size: 9px; }
+.segment-position input[type="range"] { margin: 0; }
 .cell-color-control, .empty-control { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; color: #485c62; font-size: 10px; cursor: pointer; }
 .cell-color-control input { width: 24px; height: 20px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .empty-control { justify-content: flex-start; }
