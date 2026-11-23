@@ -54,7 +54,7 @@
           <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="100" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
           <div class="control-group"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
           <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
-          <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"></div>
+          <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Rotates the full design inside the artboard.</p></div>
           <div class="divider"></div>
           <h3 class="control-section-title">Groups</h3>
           <fieldset class="palette-control">
@@ -78,7 +78,7 @@
             </div>
             <div class="segment-position">
               <div class="control-label"><strong id="position-title">Move selected group 1</strong></div>
-              <p class="segment-editor-help">Moves and rotates every ring section in the selected group.</p>
+              <p class="segment-editor-help">Move or rotate every ring section in the selected group.</p>
               <label class="position-axis" for="segment-x"><span>Horizontal</span><output id="segment-x-output" for="segment-x">0 units</output></label>
               <input id="segment-x" name="segment-x" type="range" min="-100" max="100" value="0" step="1">
               <div class="range-ends"><span>Left</span><span>Right</span></div>
