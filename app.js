@@ -15,7 +15,7 @@ function populatePaletteSelect(select, defaultColour) {
     family.colors.forEach(function (entry) {
       const option = document.createElement("option");
       option.value = entry[1].toUpperCase();
-      option.textContent = entry[0] + " · " + entry[1].toUpperCase();
+      option.textContent = family.name + " " + entry[0] + " · " + entry[1].toUpperCase();
       group.append(option);
     });
     select.append(group);
@@ -312,7 +312,7 @@ function render() {
   document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% variation";
   stage.classList.toggle("has-background", settings.background);
   preview.querySelector("#shape-desc").textContent =
-    settings.rings + " concentric rings arranged in " + settings.segments + " color groups, with " + Math.round(settings.variation * 100) + " percent variation.";
+    settings.rings + " concentric rings arranged in " + settings.segments + " colour groups, with " + Math.round(settings.variation * 100) + " percent variation.";
   renderSegmentEditor(settings);
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
