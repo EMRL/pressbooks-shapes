@@ -52,7 +52,7 @@
           <div class="control-group"><div class="control-label"><label for="dot-size">Center dot size</label><output id="dot-size-output" for="dot-size">12% of diameter</output></div><input id="dot-size" name="dot-size" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
           <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="30" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
           <div class="control-group"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="scale">Scale and crop</label><output id="scale-output" for="scale">125%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="125" step="1"><div class="range-ends"><span>Fit</span><span>Crop</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">125%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="125" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
           <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"></div>
           <div class="divider"></div>
           <fieldset class="palette-control">
@@ -80,7 +80,7 @@
             <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
           </div>
           <div class="export-row"><button class="export-button" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
-          <p class="export-note">Variation starts at 0% for a regular, repeatable composition. Adjust ring geometry, segment colours, and crop, then export a 600 × 600 SVG.</p>
+          <p class="export-note">Variation starts at 0% for a regular, repeatable composition. Increase scale to crop at the 600 × 600 artboard edges; the SVG export uses the same bounds.</p>
         </aside>
       </div>
       <footer class="page-footer"><span>PRESSBOOKS SHAPES</span><span>CONCENTRIC COMPOSITION · SVG EXPORT</span></footer>
