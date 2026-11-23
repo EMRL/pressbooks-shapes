@@ -102,6 +102,9 @@ input[type="range"]:focus-visible { outline: 2px solid #8faab0; outline-offset: 
 .segment-position .control-label { margin-bottom: 4px; color: #334a52; font-size: 10px; }
 .segment-position .control-label strong { font-weight: 500; }
 .segment-position .segment-editor-help { margin-bottom: 8px; }
+.group-empty-control { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; color: #485c62; font-size: 10px; cursor: pointer; }
+.group-empty-control input { accent-color: var(--accent); margin: 0; }
+.empty-control.is-disabled { opacity: .55; cursor: not-allowed; }
 .position-axis { display: flex; align-items: baseline; justify-content: space-between; margin: 10px 0 7px; color: #485c62; font-size: 10px; }
 .position-axis output { color: var(--accent); font-family: var(--mono); font-size: 9px; }
 .segment-position input[type="range"] { margin: 0; }

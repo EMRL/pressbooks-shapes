@@ -20,8 +20,10 @@ each group can also be moved horizontally or vertically and rotated independentl
 Edit the group palette and scale to explore other arrangements.
 
 Use the individual sections grid to select a ring-and-group cell. Change its
-colour, leave it empty, or restore the shared group colour. Clicking a visible
-section in the preview selects the same cell in the grid. Numeric fields sit
+colour, leave it empty, or restore the shared group colour. You can also empty
+every section in a group at once. Enable **Knock out group overlaps** to make
+areas shared by different groups transparent. Clicking a visible section in the
+preview selects the same cell in the grid. Numeric fields sit
 beside every slider for precise values. The artwork starts at 100% scale so it
 fits inside the artboard.
 
