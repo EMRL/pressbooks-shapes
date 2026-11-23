@@ -1,3 +1,27 @@
+const BRAND_PALETTE = [
+  { name: "Publish", colors: [["20", "#f1d2d4"], ["40", "#e4a6a8"], ["60", "#d6797d"], ["80", "#c94d51"], ["100", "#bb2026"], ["120", "#922723"]] },
+  { name: "Pathways", colors: [["20", "#dfedf0"], ["40", "#bedae0"], ["60", "#9ec8d1"], ["80", "#7db5c1"], ["100", "#5da3b2"], ["120", "#4a828e"]] },
+  { name: "Directory", colors: [["20", "#fdefd3"], ["40", "#fbdfa7"], ["60", "#f8cf7b"], ["80", "#f6bf4f"], ["100", "#f4af23"], ["120", "#c38c1c"]] },
+  { name: "Exchange", colors: [["20", "#ccede5"], ["40", "#99dbcb"], ["60", "#66c8b1"], ["80", "#33b697"], ["100", "#00a47d"], ["120", "#008364"]] },
+  { name: "Commons Dark", colors: [["20", "#d3d4d4"], ["40", "#a8a9aa"], ["60", "#7c7e7f"], ["80", "#515355"], ["100", "#25282a"], ["120", "#000000"]] },
+  { name: "Commons Light", colors: [["20", "#edeeee"], ["40", "#dcdcdd"], ["60", "#cacbcb"], ["80", "#b9b9ba"], ["100", "#a7a8a9"], ["120", "#868687"]] }
+];
+const DEFAULT_GROUP_COLOURS = ["#bb2026", "#5da3b2", "#f4af23", "#00a47d"];
+
+function populatePaletteSelect(select, defaultColour) {
+  BRAND_PALETTE.forEach(function (family) {
+    const group = document.createElement("optgroup");
+    group.label = family.name;
+    family.colors.forEach(function (entry) {
+      const option = document.createElement("option");
+      option.value = entry[1].toUpperCase();
+      option.textContent = entry[0] + " · " + entry[1].toUpperCase();
+      group.append(option);
+    });
+    select.append(group);
+  });
+  select.value = defaultColour.toUpperCase();
+}
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CENTER = 300;
 const controls = {
@@ -54,6 +78,11 @@ const emptyGroups = new Set();
 const segmentOffsets = new Map();
 const segmentRotations = new Map();
 const rangeNumbers = new Map();
+controls.colors.forEach(function (select, index) {
+  populatePaletteSelect(select, DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length]);
+});
+populatePaletteSelect(controls.dotColor, "#a7a8a9");
+populatePaletteSelect(cellEditor.color, "#bb2026");
 let selectedCell = { ring: 0, segment: 0 };
 
 function cellKey(ring, segment) {
@@ -166,7 +195,7 @@ function render() {
     const background = document.createElementNS(SVG_NS, "rect");
     background.setAttribute("width", "600");
     background.setAttribute("height", "600");
-    background.setAttribute("fill", "#FFFFFF");
+    background.setAttribute("fill", "#EDEEEE");
     art.append(background);
   }
 
@@ -275,11 +304,12 @@ function render() {
   outputs.rotation.value = settings.rotation + "°";
   outputs.dotX.value = settings.dotX + " units";
   outputs.dotY.value = settings.dotY + " units";
+  controls.dotColor.closest(".color-control").style.setProperty("--swatch", controls.dotColor.value);
   controls.colors.forEach(function (input) {
     input.closest(".palette-swatch").style.setProperty("--swatch", input.value);
   });
-  document.querySelector("#shape-count").textContent = settings.rings + " RINGS";
-  document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% VARIATION";
+  document.querySelector("#shape-count").textContent = settings.rings + (settings.rings === 1 ? " ring" : " rings");
+  document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% variation";
   stage.classList.toggle("has-background", settings.background);
   preview.querySelector("#shape-desc").textContent =
     settings.rings + " concentric rings arranged in " + settings.segments + " color groups, with " + Math.round(settings.variation * 100) + " percent variation.";
@@ -342,6 +372,7 @@ function renderSegmentEditor(settings) {
   const selectedKey = cellKey(selectedCell.ring, selectedCell.segment);
   cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
   cellEditor.color.value = cellColor(settings, selectedCell.ring, selectedCell.segment);
+  cellEditor.color.closest(".cell-color-control").style.setProperty("--swatch", cellEditor.color.value);
   const groupIsEmpty = emptyGroups.has(selectedCell.segment);
   cellEditor.groupEmpty.checked = groupIsEmpty;
   cellEditor.empty.checked = groupIsEmpty || emptyCells.has(selectedKey);
