@@ -18,7 +18,7 @@
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
         <span class="brand-name">Pressbooks <b>Shapes</b></span>
       </a>
-      <div class="topbar-actions"><span class="version-tag">COMPOSITION · 01</span>${downloadButton}</div>
+      <div class="topbar-actions"><span class="version-tag">COMPOSITION · 01</span><button class="export-button topbar-export" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
     </header>
     <main id="main" class="layout">
       <section class="intro" aria-labelledby="page-title">
@@ -58,15 +58,16 @@
               <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
               <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Rotates the full design inside the artboard.</p></div>
               <div class="bottom-controls">
-            <label class="color-control" for="dot-color"><span>Center dot colour</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="dot-color" type="color" value="#a9aaa9" aria-label="Center dot colour"></label>
-            <label class="toggle-control" for="dot-visible"><span>Show center dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
-            <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
-          </div>
+                <label class="color-control" for="dot-color"><span>Center dot colour</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="dot-color" type="color" value="#a9aaa9" aria-label="Center dot colour"></label>
+                <label class="toggle-control" for="dot-visible"><span>Show center dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
+                <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
+              </div>
               <div class="dot-position-controls">
-            <div class="control-group"><div class="control-label"><label for="dot-x">Center dot horizontal position</label><output id="dot-x-output" for="dot-x">0 units</output></div>
+                <div class="control-group"><div class="control-label"><label for="dot-x">Center dot horizontal position</label><output id="dot-x-output" for="dot-x">0 units</output></div><input id="dot-x" name="dot-x" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Left</span><span>Right</span></div></div>
+                <div class="control-group"><div class="control-label"><label for="dot-y">Center dot vertical position</label><output id="dot-y-output" for="dot-y">0 units</output></div><input id="dot-y" name="dot-y" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Up</span><span>Down</span></div></div>
+              </div>
             </div>
-          </details>
-        </aside>
+          </details>        </aside>
       </div>
       <section class="groups-panel" aria-label="Group and section controls">
         <div class="groups-head">
