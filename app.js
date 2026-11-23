@@ -14,7 +14,8 @@ const controls = {
   dotVisible: document.querySelector("#dot-visible"),
   dotX: document.querySelector("#dot-x"),
   dotY: document.querySelector("#dot-y"),
-  background: document.querySelector("#background")
+  background: document.querySelector("#background"),
+  excludeOverlaps: document.querySelector("#exclude-overlaps")
 };
 const outputs = {
   rings: document.querySelector("#rings-output"),
@@ -37,6 +38,7 @@ const cellEditor = {
   label: document.querySelector("#selected-cell-label"),
   color: document.querySelector("#cell-color"),
   empty: document.querySelector("#cell-empty"),
+  groupEmpty: document.querySelector("#group-empty"),
   reset: document.querySelector("#reset-cell-color"),
   positionTitle: document.querySelector("#position-title"),
   x: document.querySelector("#segment-x"),
@@ -48,6 +50,7 @@ const cellEditor = {
 };
 const cellColors = new Map();
 const emptyCells = new Set();
+const emptyGroups = new Set();
 const segmentOffsets = new Map();
 const segmentRotations = new Map();
 const rangeNumbers = new Map();
@@ -140,7 +143,8 @@ function readSettings() {
     dotVisible: controls.dotVisible.checked,
     dotX: Number(controls.dotX.value),
     dotY: Number(controls.dotY.value),
-    background: controls.background.checked
+    background: controls.background.checked,
+    excludeOverlaps: controls.excludeOverlaps.checked
   };
 }
 
@@ -166,6 +170,7 @@ function render() {
     art.append(background);
   }
 
+  const drawnSegments = [];
   for (let ring = 0; ring < settings.rings; ring += 1) {
     const outer = outerRadius - ring * (ringWidth + gap);
     const inner = outer - ringWidth;
@@ -177,28 +182,77 @@ function render() {
       const start = 180 + groupRotation + ring * offset + segment * segmentAngle;
       const end = 180 + groupRotation + ring * offset + (segment + 1) * segmentAngle;
       const key = cellKey(ring, segment);
-      if (emptyCells.has(key)) continue;
-      const path = document.createElementNS(SVG_NS, "path");
-      path.setAttribute("d", createRingSegment(outer, inner, start, end));
-      path.setAttribute("fill", cellColor(settings, ring, segment));
-      const segmentOffset = segmentOffsets.get(segment) || { x: 0, y: 0 };
-      path.setAttribute("transform", "translate(" + segmentOffset.x + " " + segmentOffset.y + ")");
-      path.setAttribute("fill-rule", "evenodd");
-      path.dataset.ring = String(ring + 1);
-      path.dataset.segment = String(segment + 1);
-      path.setAttribute("role", "button");
-      path.setAttribute("tabindex", "0");
-      path.setAttribute("aria-label", "Ring " + (ring + 1) + ", group " + (segment + 1));
-      if (selectedCell.ring === ring && selectedCell.segment === segment) path.classList.add("is-selected");
-      path.addEventListener("click", function () { selectCell(ring, segment); });
-      path.addEventListener("keydown", function (event) {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          selectCell(ring, segment);
-        }
+      if (emptyCells.has(key) || emptyGroups.has(segment)) continue;
+      drawnSegments.push({
+        ring: ring,
+        segment: segment,
+        d: createRingSegment(outer, inner, start, end),
+        fill: cellColor(settings, ring, segment),
+        offset: segmentOffsets.get(segment) || { x: 0, y: 0 }
       });
-      art.append(path);
     }
+  }
+
+  const groupLayers = Array.from({ length: settings.segments }, function () { return []; });
+  drawnSegments.forEach(function (item) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", item.d);
+    path.setAttribute("fill", item.fill);
+    path.setAttribute("transform", "translate(" + item.offset.x + " " + item.offset.y + ")");
+    path.setAttribute("fill-rule", "evenodd");
+    path.dataset.ring = String(item.ring + 1);
+    path.dataset.segment = String(item.segment + 1);
+    path.setAttribute("role", "button");
+    path.setAttribute("tabindex", "0");
+    path.setAttribute("aria-label", "Ring " + (item.ring + 1) + ", group " + (item.segment + 1));
+    if (selectedCell.ring === item.ring && selectedCell.segment === item.segment) path.classList.add("is-selected");
+    path.addEventListener("click", function () { selectCell(item.ring, item.segment); });
+    path.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectCell(item.ring, item.segment);
+      }
+    });
+    groupLayers[item.segment].push(path);
+  });
+
+  if (settings.excludeOverlaps) {
+    const defs = document.createElementNS(SVG_NS, "defs");
+    for (let segment = 0; segment < settings.segments; segment += 1) {
+      const mask = document.createElementNS(SVG_NS, "mask");
+      mask.id = "group-mask-" + (segment + 1);
+      mask.setAttribute("maskUnits", "userSpaceOnUse");
+      mask.setAttribute("maskContentUnits", "userSpaceOnUse");
+      mask.setAttribute("x", "-600");
+      mask.setAttribute("y", "-600");
+      mask.setAttribute("width", "1800");
+      mask.setAttribute("height", "1800");
+      drawnSegments.filter(function (item) { return item.segment === segment; }).forEach(function (item) {
+        const visible = document.createElementNS(SVG_NS, "path");
+        visible.setAttribute("d", item.d);
+        visible.setAttribute("transform", "translate(" + item.offset.x + " " + item.offset.y + ")");
+        visible.setAttribute("fill", "#fff");
+        mask.append(visible);
+      });
+      drawnSegments.filter(function (item) { return item.segment !== segment; }).forEach(function (item) {
+        const overlap = document.createElementNS(SVG_NS, "path");
+        overlap.setAttribute("d", item.d);
+        overlap.setAttribute("transform", "translate(" + item.offset.x + " " + item.offset.y + ")");
+        overlap.setAttribute("fill", "#000");
+        mask.append(overlap);
+      });
+      defs.append(mask);
+    }
+    art.append(defs);
+  }
+
+  for (let segment = 0; segment < settings.segments; segment += 1) {
+    if (groupLayers[segment].length === 0) continue;
+    const group = document.createElementNS(SVG_NS, "g");
+    group.dataset.segment = String(segment + 1);
+    if (settings.excludeOverlaps) group.setAttribute("mask", "url(#group-mask-" + (segment + 1) + ")");
+    groupLayers[segment].forEach(function (path) { group.append(path); });
+    art.append(group);
   }
 
   if (settings.dotVisible && settings.dotSize > 0) {
@@ -270,7 +324,7 @@ function renderSegmentEditor(settings) {
 
     for (let segment = 0; segment < settings.segments; segment += 1) {
       const key = cellKey(ring, segment);
-      const empty = emptyCells.has(key);
+      const empty = emptyGroups.has(segment) || emptyCells.has(key);
       const cell = document.createElement("button");
       cell.type = "button";
       cell.className = "segment-cell" + (empty ? " is-empty" : "");
@@ -288,7 +342,10 @@ function renderSegmentEditor(settings) {
   const selectedKey = cellKey(selectedCell.ring, selectedCell.segment);
   cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
   cellEditor.color.value = cellColor(settings, selectedCell.ring, selectedCell.segment);
-  cellEditor.empty.checked = emptyCells.has(selectedKey);
+  const groupIsEmpty = emptyGroups.has(selectedCell.segment);
+  cellEditor.groupEmpty.checked = groupIsEmpty;
+  cellEditor.empty.checked = groupIsEmpty || emptyCells.has(selectedKey);
+  cellEditor.empty.disabled = groupIsEmpty;
   cellEditor.reset.disabled = !cellColors.has(selectedKey);
   const position = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
   cellEditor.positionTitle.textContent = "Selected group " + (selectedCell.segment + 1);
@@ -323,13 +380,13 @@ function attachNumericInputs() {
       const value = Math.max(Number(range.min), Math.min(Number(range.max), Number(number.value)));
       range.value = String(value);
       number.value = range.value;
-      render();
+      range.dispatchEvent(new Event("input", { bubbles: true }));
     });
     number.addEventListener("change", function () {
       const value = number.value === "" ? Number(range.value) : Math.max(Number(range.min), Math.min(Number(range.max), Number(number.value)));
       range.value = String(value);
       number.value = range.value;
-      render();
+      range.dispatchEvent(new Event("input", { bubbles: true }));
     });
   });
 }
@@ -354,7 +411,7 @@ function buildExportSvg() {
   title.textContent = "Pressbooks Shapes concentric ring composition";
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
-  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups.";
+  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups" + (controls.excludeOverlaps.checked ? " with group overlaps removed" : "") + ".";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
 
@@ -400,6 +457,11 @@ cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", ce
 attachNumericInputs();
 cellEditor.color.addEventListener("input", function () {
   cellColors.set(cellKey(selectedCell.ring, selectedCell.segment), cellEditor.color.value.toUpperCase());
+  render();
+});
+cellEditor.groupEmpty.addEventListener("change", function () {
+  if (cellEditor.groupEmpty.checked) emptyGroups.add(selectedCell.segment);
+  else emptyGroups.delete(selectedCell.segment);
   render();
 });
 cellEditor.empty.addEventListener("change", function () {
