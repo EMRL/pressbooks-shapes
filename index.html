@@ -18,7 +18,7 @@
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
         <span class="brand-name">Pressbooks <b>Shapes</b></span>
       </a>
-      <span class="version-tag">COMPOSITION · 01</span>
+      <div class="topbar-actions"><span class="version-tag">COMPOSITION · 01</span>${downloadButton}</div>
     </header>
     <main id="main" class="layout">
       <section class="intro" aria-labelledby="page-title">
@@ -41,23 +41,36 @@
           </div>
           <div class="preview-foot"><span id="shape-count">5 RINGS</span><span id="variation-readout">0% VARIATION</span></div>
         </section>
-        <aside class="controls-panel" aria-label="Shape controls">
-          <div class="controls-head">
-            <div><span class="panel-kicker">DESIGN CONTROLS</span><h2>Build the composition</h2></div>
-          </div>
-          <h3 class="control-section-title">Global composition</h3>
+        <aside class="controls-panel" aria-label="Composition controls">
+          <div class="controls-head"><div><span class="panel-kicker">DESIGN CONTROLS</span><h2>Build the composition</h2></div></div>
+          <h3 class="control-section-title">Composition</h3>
           <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">5 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="5" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
           <div class="control-group"><div class="control-label"><label for="segments">Groups</label><output id="segments-output" for="segments">4 groups</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
           <div class="control-group"><div class="control-label"><label for="spacing">Ring spacing</label><output id="spacing-output" for="spacing">8 px</output></div><input id="spacing" name="spacing" type="range" min="0" max="24" value="8" step="1"><div class="range-ends"><span>Tight</span><span>Open</span></div></div>
           <div class="control-group"><div class="control-label"><label for="clearance">Inner clearance</label><output id="clearance-output" for="clearance">36% of radius</output></div><input id="clearance" name="clearance" type="range" min="15" max="60" value="36" step="1"><div class="range-ends"><span>Small</span><span>Large</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="dot-size">Center dot size</label><output id="dot-size-output" for="dot-size">12% of diameter</output></div><input id="dot-size" name="dot-size" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="100" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
-          <div class="control-group"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
-          <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Rotates the full design inside the artboard.</p></div>
           <div class="control-group"><label class="toggle-control" for="exclude-overlaps"><span>Knock out group overlaps</span><span class="toggle-wrap"><input id="exclude-overlaps" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label><p class="control-help">Areas shared by different groups become transparent.</p></div>
-          <div class="divider"></div>
-          <h3 class="control-section-title">Groups</h3>
+          <details class="advanced-controls">
+            <summary>Advanced settings</summary>
+            <div class="advanced-controls-body">
+              <div class="control-group"><div class="control-label"><label for="dot-size">Center dot size</label><output id="dot-size-output" for="dot-size">12% of diameter</output></div><input id="dot-size" name="dot-size" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
+              <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="100" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
+              <div class="control-group"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
+              <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
+              <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Rotates the full design inside the artboard.</p></div>
+              <div class="bottom-controls">
+            <label class="color-control" for="dot-color"><span>Center dot colour</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="dot-color" type="color" value="#a9aaa9" aria-label="Center dot colour"></label>
+            <label class="toggle-control" for="dot-visible"><span>Show center dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
+            <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
+          </div>
+              <div class="dot-position-controls">
+            <div class="control-group"><div class="control-label"><label for="dot-x">Center dot horizontal position</label><output id="dot-x-output" for="dot-x">0 units</output></div>
+            </div>
+          </details>
+        </aside>
+      </div>
+      <section class="groups-panel" aria-label="Group and section controls">
+        <div class="groups-head">
+          <div><span class="panel-kicker">GROUP EDITOR</span><h2>Shape the sections</h2><p>Select a group or a ring section to edit its colour, position, or visibility.</p></div>
           <fieldset class="palette-control">
             <legend>Default group colours</legend>
             <div class="palette-swatches">
@@ -67,10 +80,14 @@
               <label class="palette-swatch" style="--swatch:#00a181"><span>4</span><input data-segment-color type="color" value="#00a181" aria-label="Group colour 4"></label>
             </div>
           </fieldset>
+        </div>
+        <div class="groups-editor">
           <fieldset class="segment-editor">
             <legend>Individual sections</legend>
             <p class="segment-editor-help">Choose a ring and object group. Each section can use its own colour or be left empty.</p>
             <div id="segment-grid" class="segment-grid" aria-label="Ring and object group colour grid"></div>
+          </fieldset>
+          <div class="group-inspector">
             <div class="cell-editor">
               <output id="selected-cell-label">Ring 1 · Group 1</output>
               <label class="cell-color-control" for="cell-color">Section colour<input id="cell-color" type="color" value="#b93632"></label>
@@ -91,20 +108,9 @@
               <input id="group-rotation" name="group-rotation" type="range" min="-180" max="180" value="0" step="1">
               <div class="range-ends"><span>Counter-clockwise</span><span>Clockwise</span></div>
             </div>
-          </fieldset>
-          <div class="bottom-controls">
-            <label class="color-control" for="dot-color"><span>Center dot colour</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="dot-color" type="color" value="#a9aaa9" aria-label="Center dot colour"></label>
-            <label class="toggle-control" for="dot-visible"><span>Show center dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
-            <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
           </div>
-          <div class="dot-position-controls">
-            <div class="control-group"><div class="control-label"><label for="dot-x">Center dot horizontal position</label><output id="dot-x-output" for="dot-x">0 units</output></div><input id="dot-x" name="dot-x" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Left</span><span>Right</span></div></div>
-            <div class="control-group"><div class="control-label"><label for="dot-y">Center dot vertical position</label><output id="dot-y-output" for="dot-y">0 units</output></div><input id="dot-y" name="dot-y" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Up</span><span>Down</span></div></div>
-          </div>
-          <div class="export-row"><button class="export-button" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
-          <p class="export-note">Variation starts at 0% for a regular, repeatable composition. Increase scale to crop at the 600 × 600 artboard edges; the SVG export uses the same bounds.</p>
-        </aside>
-      </div>
+        </div>
+      </section>
       <footer class="page-footer"><span>PRESSBOOKS SHAPES</span><span>CONCENTRIC COMPOSITION · SVG EXPORT</span></footer>
     </main>
   </body>
