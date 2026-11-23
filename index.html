@@ -73,27 +73,18 @@
           <div><h2>Group editor</h2><p>Select a group or ring section to adjust its colour, position, or visibility.</p></div>
           <fieldset class="palette-control">
             <legend>Default group colours</legend>
-            <div class="palette-swatches">
-              <button class="palette-swatch" type="button" data-segment-color data-color="#bb2026" style="--swatch:#bb2026" aria-label="Group 1 default colour: Publish 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>1</span></button>
-              <button class="palette-swatch" type="button" data-segment-color data-color="#5da3b2" style="--swatch:#5da3b2" aria-label="Group 2 default colour: Pathways 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>2</span></button>
-              <button class="palette-swatch" type="button" data-segment-color data-color="#f4af23" style="--swatch:#f4af23" aria-label="Group 3 default colour: Directory 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>3</span></button>
-              <button class="palette-swatch" type="button" data-segment-color data-color="#00a47d" style="--swatch:#00a47d" aria-label="Group 4 default colour: Exchange 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>4</span></button>
-            </div>
+            <div class="palette-swatches" id="group-swatches"></div>
           </fieldset>
         </div>
         <div class="groups-editor">
           <fieldset class="segment-editor">
-            <legend>Individual sections</legend>
+            <legend class="segment-editor-legend">Individual sections <output id="selected-cell-label">Ring 1 · Group 1</output></legend>
             <p class="segment-editor-help">Choose a ring and group. Each section can use its own colour or be left empty.</p>
             <div id="segment-grid" class="segment-grid" aria-label="Ring and object group colour grid"></div>
           </fieldset>
           <div class="group-inspector">
-            <div class="cell-editor">
-              <output id="selected-cell-label">Ring 1 · Group 1</output>
-            </div>
             <div class="segment-position">
               <div class="control-label"><strong id="position-title">Group 1</strong></div>
-              <label class="group-empty-control" for="group-empty"><input id="group-empty" type="checkbox"><span>Empty entire group</span></label>
               <p class="segment-editor-help">Move or rotate every ring section in the active group.</p>
               <label class="position-axis" for="segment-x"><span>Horizontal</span><output id="segment-x-output" for="segment-x">0 units</output></label>
               <input id="segment-x" name="segment-x" type="range" min="-100" max="100" value="0" step="1">
@@ -113,8 +104,8 @@
     <div id="palette-popover" class="palette-popover" role="dialog" aria-label="Choose a colour" hidden>
       <div id="palette-grid" class="palette-grid" role="radiogroup" aria-label="Pressbooks colour palette"></div>
       <div id="section-palette-actions" class="section-palette-actions" hidden>
-        <label class="empty-control" for="cell-empty"><input id="cell-empty" type="checkbox"> Empty section</label>
-        <button id="reset-cell-color" class="reset-cell-button" type="button">Use group default</button>
+        <label class="empty-control" for="palette-empty"><input id="palette-empty" type="checkbox"><span id="palette-empty-label">Empty section</span></label>
+        <button id="palette-reset" class="reset-cell-button" type="button">Use group default</button>
       </div>
     </div>
   </body>
