@@ -47,6 +47,8 @@ h1 { font-size: clamp(36px, 5vw, 52px); line-height: 1.05; letter-spacing: -.065
 #shape-preview { display: block; width: min(86%, 470px); max-height: 100%; aspect-ratio: 1; overflow: hidden; outline: 1px solid #8c9a99; outline-offset: 0; }
 .preview-foot { color: #778486; font-size: 9px; padding: 0 2px; }
 .controls-panel { padding: 22px 22px 17px; }
+.control-section-title { margin: 0 0 13px; color: #718083; font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.control-help { margin: 7px 0 0; color: #82908f; font-size: 10px; line-height: 1.4; }
 .range-input-row { display: grid; grid-template-columns: minmax(0, 1fr) 66px; gap: 10px; align-items: center; }
 .range-input-row input[type="range"] { min-width: 0; }
 .range-number { width: 100%; height: 28px; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; background: #fff; color: var(--ink); font-family: var(--mono); font-size: 10px; text-align: right; }

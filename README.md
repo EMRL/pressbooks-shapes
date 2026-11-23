@@ -14,8 +14,10 @@ area at the centre. Band width is calculated from the ring count, spacing, and
 inner clearance. The centre dot can be hidden, resized, recoloured, and moved independently.
 
 Variation is deterministic and starts at 0%, so the initial composition keeps
-evenly aligned groups. Increase it to introduce subtle per-ring rotation.
-Edit the group palette, rotation, and scale to explore other arrangements. Each group can be moved horizontally or vertically across all rings.
+evenly aligned groups. Increase it to introduce increasingly visible per-ring
+rotation. Whole-composition rotation turns the complete design inside the artboard;
+each group can also be moved horizontally or vertically and rotated independently.
+Edit the group palette and scale to explore other arrangements.
 
 Use the individual sections grid to select a ring-and-group cell. Change its
 colour, leave it empty, or restore the shared group colour. Clicking a visible

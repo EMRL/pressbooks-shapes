@@ -41,12 +41,16 @@ const cellEditor = {
   positionTitle: document.querySelector("#position-title"),
   x: document.querySelector("#segment-x"),
   y: document.querySelector("#segment-y"),
+  rotation: document.querySelector("#group-rotation"),
+  rotationOutput: document.querySelector("#group-rotation-output"),
   xOutput: document.querySelector("#segment-x-output"),
   yOutput: document.querySelector("#segment-y-output")
 };
 const cellColors = new Map();
 const emptyCells = new Set();
 const segmentOffsets = new Map();
+const segmentRotations = new Map();
+const rangeNumbers = new Map();
 let selectedCell = { ring: 0, segment: 0 };
 
 function cellKey(ring, segment) {
@@ -152,6 +156,7 @@ function render() {
   const dotRadius = outerRadius * settings.dotSize;
   const segmentAngle = 360 / settings.segments;
   art.replaceChildren();
+  art.setAttribute("transform", "rotate(" + settings.rotation + " " + CENTER + " " + CENTER + ")");
 
   if (settings.background) {
     const background = document.createElementNS(SVG_NS, "rect");
@@ -168,8 +173,9 @@ function render() {
     for (let segment = 0; segment < settings.segments; segment += 1) {
       const ringJitter = settings.variation === 0 ? 0 : seededUnit(ring + 1) * 2 - 1;
       const offset = ringJitter * settings.variation * segmentAngle * 0.3;
-      const start = 180 + settings.rotation + ring * offset + segment * segmentAngle;
-      const end = 180 + settings.rotation + ring * offset + (segment + 1) * segmentAngle;
+      const groupRotation = segmentRotations.get(segment) || 0;
+      const start = 180 + groupRotation + ring * offset + segment * segmentAngle;
+      const end = 180 + groupRotation + ring * offset + (segment + 1) * segmentAngle;
       const key = cellKey(ring, segment);
       if (emptyCells.has(key)) continue;
       const path = document.createElementNS(SVG_NS, "path");
@@ -229,6 +235,8 @@ function render() {
     const max = Number(input.max);
     const percentage = ((Number(input.value) - min) / (max - min)) * 100;
     input.style.setProperty("--range-progress", percentage + "%");
+    const number = rangeNumbers.get(input.id);
+    if (number && document.activeElement !== number) number.value = input.value;
   });
 }
 
@@ -283,9 +291,12 @@ function renderSegmentEditor(settings) {
   cellEditor.empty.checked = emptyCells.has(selectedKey);
   cellEditor.reset.disabled = !cellColors.has(selectedKey);
   const position = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
-  cellEditor.positionTitle.textContent = "Move selected group " + (selectedCell.segment + 1);
+  cellEditor.positionTitle.textContent = "Selected group " + (selectedCell.segment + 1);
   cellEditor.x.value = String(position.x);
   cellEditor.y.value = String(position.y);
+  const groupRotation = segmentRotations.get(selectedCell.segment) || 0;
+  cellEditor.rotation.value = String(groupRotation);
+  cellEditor.rotationOutput.value = groupRotation + "°";
   cellEditor.xOutput.value = position.x + " units";
   cellEditor.yOutput.value = position.y + " units";
 }
@@ -305,6 +316,7 @@ function attachNumericInputs() {
     row.className = "range-input-row";
     range.parentNode.insertBefore(row, range);
     row.append(range, number);
+    rangeNumbers.set(range.id, number);
     range.addEventListener("input", function () { number.value = range.value; });
     number.addEventListener("input", function () {
       if (number.value === "") return;
@@ -372,6 +384,12 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
+function updateSegmentRotation(value) {
+  segmentRotations.set(selectedCell.segment, Number(value));
+  render();
+}
+cellEditor.rotation.addEventListener("input", function () { updateSegmentRotation(cellEditor.rotation.value); });
+
 function updateSegmentOffset(axis, value) {
   const current = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
   segmentOffsets.set(selectedCell.segment, { ...current, [axis]: Number(value) });
