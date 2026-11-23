@@ -10,8 +10,11 @@ The app does not require a build step or package installation.
 ## Concentric composition
 
 Set the number of rings and colour groups, then tune the spacing and clear
-area at the centre. Band width is calculated from the ring count, spacing, and
-inner clearance. The centre dot can be hidden, resized, recoloured, and moved independently.
+area at the centre. The editor keeps the preview bounded beside the core controls,
+with group and section editing across the full width below. Less frequently used
+adjustments are under Advanced settings. Band width is calculated from the ring
+count, spacing, and inner clearance. The centre dot can be hidden, resized,
+recoloured, and moved independently.
 
 Variation is deterministic and starts at 0%, so the initial composition keeps
 evenly aligned groups. Increase it to introduce increasingly visible per-ring
