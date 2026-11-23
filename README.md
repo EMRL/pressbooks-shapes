@@ -19,7 +19,7 @@ Edit the segment palette, rotation, and scale to explore other arrangements.
 
 Use the individual sections grid to select a ring-and-segment cell. Change its
 colour, leave it empty, or restore the shared quadrant colour. Clicking a
-visible segment in the preview selects the same cell in the grid.
+visible segment in the preview selects the same cell in the grid. Move a selected segment horizontally or vertically; the shift applies to that segment across all rings. The artwork starts at 100% scale so it fits inside the artboard.
 
 Select **Download SVG** to save a 600 by 600 vector file.
 The background stays transparent unless you enable the background control.
