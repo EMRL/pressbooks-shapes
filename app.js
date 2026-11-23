@@ -43,6 +43,8 @@ const preview = document.querySelector("#shape-preview");
 const art = document.querySelector("#shape-art");
 const stage = document.querySelector("#preview-stage");
 const segmentGrid = document.querySelector("#segment-grid");
+const palettePopover = document.querySelector("#palette-popover");
+const paletteGrid = document.querySelector("#palette-grid");
 const cellEditor = {
   label: document.querySelector("#selected-cell-label"),
   color: document.querySelector("#cell-color"),
@@ -64,21 +66,7 @@ const segmentOffsets = new Map();
 const segmentRotations = new Map();
 const rangeNumbers = new Map();
 let selectedCell = { ring: 0, segment: 0 };
-
-function populatePaletteSelect(select, initialValue) {
-  BRAND_PALETTE.forEach(function (family) {
-    const group = document.createElement("optgroup");
-    group.label = family.name;
-    family.values.forEach(function (entry) {
-      const option = document.createElement("option");
-      option.value = entry[1].toUpperCase();
-      option.textContent = family.name + " " + entry[0] + " · " + entry[1].toUpperCase();
-      group.append(option);
-    });
-    select.append(group);
-  });
-  select.value = initialValue.toUpperCase();
-}
+let paletteTarget = null;
 
 function paletteLabel(hex) {
   for (const family of BRAND_PALETTE) {
@@ -88,11 +76,19 @@ function paletteLabel(hex) {
   return hex.toUpperCase();
 }
 
-controls.colors.forEach(function (select, index) {
-  populatePaletteSelect(select, DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length]);
+function updateColourTrigger(button, hex, label) {
+  button.dataset.color = hex.toUpperCase();
+  button.style.setProperty("--swatch", hex);
+  const swatch = button.querySelector(".color-swatch");
+  if (swatch) swatch.style.setProperty("--swatch", hex);
+  button.setAttribute("aria-label", label + ": " + paletteLabel(hex));
+}
+
+controls.colors.forEach(function (button, index) {
+  updateColourTrigger(button, DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length], "Group " + (index + 1) + " default colour");
 });
-populatePaletteSelect(controls.dotColor, "#a7a8a9");
-populatePaletteSelect(cellEditor.color, DEFAULT_GROUP_COLOURS[0]);
+updateColourTrigger(controls.dotColor, "#a7a8a9", "Centre dot colour");
+updateColourTrigger(cellEditor.color, DEFAULT_GROUP_COLOURS[0], "Section colour");
 
 function cellKey(ring, segment) {
   return ring + ":" + segment;
@@ -101,6 +97,113 @@ function cellKey(ring, segment) {
 function cellColor(settings, ring, segment) {
   return cellColors.get(cellKey(ring, segment)) || settings.colors[segment % settings.colors.length];
 }
+
+function targetColour(target) {
+  if (target.type === "group") return controls.colors[target.index].dataset.color;
+  if (target.type === "dot") return controls.dotColor.dataset.color;
+  const settings = readSettings();
+  return cellColors.get(cellKey(target.ring, target.segment)) || settings.colors[target.segment % settings.colors.length];
+}
+
+function positionPalette() {
+  if (!paletteTarget || palettePopover.hidden) return;
+  const bounds = paletteTarget.trigger.getBoundingClientRect();
+  const margin = 8;
+  const width = palettePopover.offsetWidth;
+  const height = palettePopover.offsetHeight;
+  const left = Math.max(margin, Math.min(bounds.left, window.innerWidth - width - margin));
+  let top = bounds.bottom + 6;
+  if (top + height > window.innerHeight - margin) top = bounds.top - height - 6;
+  top = Math.max(margin, Math.min(top, window.innerHeight - height - margin));
+  palettePopover.style.left = left + "px";
+  palettePopover.style.top = top + "px";
+}
+
+function closePalette(restoreFocus) {
+  if (!paletteTarget) return;
+  const trigger = paletteTarget.trigger;
+  trigger.setAttribute("aria-expanded", "false");
+  palettePopover.hidden = true;
+  paletteTarget = null;
+  if (restoreFocus) trigger.focus();
+}
+
+function choosePaletteColour(hex) {
+  if (!paletteTarget) return;
+  const target = paletteTarget;
+  if (target.type === "group") {
+    updateColourTrigger(controls.colors[target.index], hex, "Group " + (target.index + 1) + " default colour");
+  } else if (target.type === "dot") {
+    updateColourTrigger(controls.dotColor, hex, "Centre dot colour");
+  } else {
+    cellColors.set(cellKey(target.ring, target.segment), hex.toUpperCase());
+  }
+  closePalette(true);
+  render();
+}
+
+function openPalette(trigger, type, index) {
+  if (paletteTarget && paletteTarget.trigger === trigger) {
+    closePalette(false);
+    return;
+  }
+  closePalette(false);
+  paletteTarget = { trigger, type, index, ring: selectedCell.ring, segment: selectedCell.segment };
+  trigger.setAttribute("aria-expanded", "true");
+  const selected = targetColour(paletteTarget).toUpperCase();
+  paletteGrid.replaceChildren();
+  BRAND_PALETTE.forEach(function (family) {
+    const row = document.createElement("div");
+    row.className = "palette-row";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", family.name);
+    family.values.forEach(function (entry) {
+      const hex = entry[1].toUpperCase();
+      const swatch = document.createElement("button");
+      swatch.type = "button";
+      swatch.className = "palette-option";
+      swatch.setAttribute("role", "radio");
+      swatch.setAttribute("aria-label", family.name + " " + entry[0]);
+      swatch.setAttribute("aria-checked", String(hex === selected));
+      swatch.tabIndex = hex === selected ? 0 : -1;
+      swatch.style.setProperty("--swatch", hex);
+      swatch.dataset.color = hex;
+      swatch.addEventListener("click", function () { choosePaletteColour(hex); });
+      swatch.addEventListener("keydown", function (event) {
+        const options = Array.from(paletteGrid.querySelectorAll(".palette-option"));
+        const current = options.indexOf(swatch);
+        let next = current;
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (current + 1) % options.length;
+        else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (current - 1 + options.length) % options.length;
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = options.length - 1;
+        else return;
+        event.preventDefault();
+        options.forEach(function (option, optionIndex) { option.tabIndex = optionIndex === next ? 0 : -1; });
+        options[next].focus();
+      });
+      row.append(swatch);
+    });
+    paletteGrid.append(row);
+  });
+  palettePopover.hidden = false;
+  positionPalette();
+  const selectedSwatch = paletteGrid.querySelector('[aria-checked="true"]');
+  (selectedSwatch || paletteGrid.querySelector(".palette-option")).focus();
+}
+
+document.addEventListener("pointerdown", function (event) {
+  if (!paletteTarget || palettePopover.contains(event.target) || paletteTarget.trigger.contains(event.target)) return;
+  closePalette(false);
+});
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape" && paletteTarget) {
+    event.preventDefault();
+    closePalette(true);
+  }
+});
+window.addEventListener("resize", positionPalette);
+document.addEventListener("scroll", positionPalette, true);
 
 function selectCell(ring, segment) {
   selectedCell = { ring, segment };
@@ -176,8 +279,8 @@ function readSettings() {
     variation: Number(controls.variation.value) / 100,
     scale: Number(controls.scale.value) / 100,
     rotation: Number(controls.rotation.value),
-    colors: controls.colors.map(function (input) { return input.value.toUpperCase(); }),
-    dotColor: controls.dotColor.value.toUpperCase(),
+    colors: controls.colors.map(function (button) { return button.dataset.color.toUpperCase(); }),
+    dotColor: controls.dotColor.dataset.color.toUpperCase(),
     dotVisible: controls.dotVisible.checked,
     dotX: Number(controls.dotX.value),
     dotY: Number(controls.dotY.value),
@@ -204,7 +307,7 @@ function render() {
     const background = document.createElementNS(SVG_NS, "rect");
     background.setAttribute("width", "600");
     background.setAttribute("height", "600");
-    background.setAttribute("fill", "#EDEEEE");
+    background.setAttribute("fill", "#FFFFFF");
     art.append(background);
   }
 
@@ -313,11 +416,10 @@ function render() {
   outputs.rotation.value = settings.rotation + "°";
   outputs.dotX.value = settings.dotX + " units";
   outputs.dotY.value = settings.dotY + " units";
-  controls.colors.forEach(function (input) {
-    input.closest(".palette-swatch").style.setProperty("--swatch", input.value);
-    input.closest(".palette-swatch").querySelector("output").textContent = paletteLabel(input.value);
+  controls.colors.forEach(function (button, index) {
+    updateColourTrigger(button, button.dataset.color, "Group " + (index + 1) + " default colour");
   });
-  controls.dotColor.closest(".color-control").style.setProperty("--swatch", controls.dotColor.value);
+  updateColourTrigger(controls.dotColor, settings.dotColor, "Centre dot colour");
   document.querySelector("#shape-count").textContent = settings.rings + (settings.rings === 1 ? " ring" : " rings");
   document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% variation";
   stage.classList.toggle("has-background", settings.background);
@@ -381,8 +483,7 @@ function renderSegmentEditor(settings) {
 
   const selectedKey = cellKey(selectedCell.ring, selectedCell.segment);
   cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
-  cellEditor.color.value = cellColor(settings, selectedCell.ring, selectedCell.segment);
-  cellEditor.color.closest(".cell-color-control").style.setProperty("--swatch", cellEditor.color.value);
+  updateColourTrigger(cellEditor.color, cellColor(settings, selectedCell.ring, selectedCell.segment), "Section colour");
   const groupIsEmpty = emptyGroups.has(selectedCell.segment);
   cellEditor.groupEmpty.checked = groupIsEmpty;
   cellEditor.empty.checked = groupIsEmpty || emptyCells.has(selectedKey);
@@ -475,10 +576,12 @@ function downloadSvg() {
 Object.values(controls).forEach(function (control) {
   if (Array.isArray(control)) {
     control.forEach(function (input) {
-      input.addEventListener("input", render);
-      input.addEventListener("change", render);
+      if (input.type !== "button") {
+        input.addEventListener("input", render);
+        input.addEventListener("change", render);
+      }
     });
-  } else if (control && control.type !== "checkbox" && control.type !== "color") {
+  } else if (control && control.type !== "checkbox" && control.type !== "color" && control.type !== "button") {
     control.addEventListener("input", render);
     if (control.tagName === "SELECT") control.addEventListener("change", render);
   } else if (control) {
@@ -487,6 +590,11 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
+controls.colors.forEach(function (button, index) {
+  button.addEventListener("click", function () { openPalette(button, "group", index); });
+});
+controls.dotColor.addEventListener("click", function () { openPalette(controls.dotColor, "dot"); });
+cellEditor.color.addEventListener("click", function () { openPalette(cellEditor.color, "cell"); });
 function updateSegmentRotation(value) {
   segmentRotations.set(selectedCell.segment, Number(value));
   render();
@@ -501,14 +609,6 @@ function updateSegmentOffset(axis, value) {
 cellEditor.x.addEventListener("input", function () { updateSegmentOffset("x", cellEditor.x.value); });
 cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", cellEditor.y.value); });
 attachNumericInputs();
-cellEditor.color.addEventListener("input", function () {
-  cellColors.set(cellKey(selectedCell.ring, selectedCell.segment), cellEditor.color.value.toUpperCase());
-  render();
-});
-cellEditor.color.addEventListener("change", function () {
-  cellColors.set(cellKey(selectedCell.ring, selectedCell.segment), cellEditor.color.value.toUpperCase());
-  render();
-});
 cellEditor.groupEmpty.addEventListener("change", function () {
   if (cellEditor.groupEmpty.checked) emptyGroups.add(selectedCell.segment);
   else emptyGroups.delete(selectedCell.segment);

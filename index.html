@@ -41,7 +41,7 @@
           <div class="preview-foot"><span id="shape-count">5 rings</span><span id="variation-readout">0% variation</span></div>
         </section>
         <aside class="controls-panel" aria-label="Composition controls">
-          <div class="controls-head"><div><span class="panel-kicker">Design controls</span><h2>Build the composition</h2></div></div>
+          <div class="controls-head"><h2>Design controls</h2></div>
           <h3 class="control-section-title">Composition</h3>
           <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">5 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="5" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
           <div class="control-group"><div class="control-label"><label for="segments">Groups</label><output id="segments-output" for="segments">4 groups</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
@@ -57,7 +57,7 @@
               <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
               <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Turn the complete design inside the artboard.</p></div>
               <div class="bottom-controls">
-                <label class="color-control" for="dot-color"><span>Centre dot colour</span><span class="color-value"><span class="color-swatch" style="--swatch:#a7a8a9"></span><select id="dot-color" aria-label="Centre dot colour"></select></span></label>
+                <div class="color-control"><span>Centre dot colour</span><button id="dot-color" class="color-trigger" type="button" data-color="#a7a8a9" aria-label="Centre dot colour: Commons Light 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span class="color-swatch" style="--swatch:#a7a8a9"></span><span class="sr-only">Choose colour</span></button></div>
                 <label class="toggle-control" for="dot-visible"><span>Show centre dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
                 <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
               </div>
@@ -70,14 +70,14 @@
       </div>
       <section class="groups-panel" aria-label="Group and section controls">
         <div class="groups-head">
-          <div><span class="panel-kicker">Group editor</span><h2>Shape the sections</h2><p>Select a group or ring section to adjust its colour, position, or visibility.</p></div>
+          <div><h2>Group editor</h2><p>Select a group or ring section to adjust its colour, position, or visibility.</p></div>
           <fieldset class="palette-control">
             <legend>Default group colours</legend>
             <div class="palette-swatches">
-              <label class="palette-swatch" style="--swatch:#bb2026"><span>1</span><select data-segment-color aria-label="Group 1 default colour"></select><output>Publish 100</output></label>
-              <label class="palette-swatch" style="--swatch:#5da3b2"><span>2</span><select data-segment-color aria-label="Group 2 default colour"></select><output>Pathways 100</output></label>
-              <label class="palette-swatch" style="--swatch:#f4af23"><span>3</span><select data-segment-color aria-label="Group 3 default colour"></select><output>Directory 100</output></label>
-              <label class="palette-swatch" style="--swatch:#00a47d"><span>4</span><select data-segment-color aria-label="Group 4 default colour"></select><output>Exchange 100</output></label>
+              <button class="palette-swatch" type="button" data-segment-color data-color="#bb2026" style="--swatch:#bb2026" aria-label="Group 1 default colour: Publish 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>1</span></button>
+              <button class="palette-swatch" type="button" data-segment-color data-color="#5da3b2" style="--swatch:#5da3b2" aria-label="Group 2 default colour: Pathways 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>2</span></button>
+              <button class="palette-swatch" type="button" data-segment-color data-color="#f4af23" style="--swatch:#f4af23" aria-label="Group 3 default colour: Directory 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>3</span></button>
+              <button class="palette-swatch" type="button" data-segment-color data-color="#00a47d" style="--swatch:#00a47d" aria-label="Group 4 default colour: Exchange 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span>4</span></button>
             </div>
           </fieldset>
         </div>
@@ -90,7 +90,7 @@
           <div class="group-inspector">
             <div class="cell-editor">
               <output id="selected-cell-label">Ring 1 · Group 1</output>
-              <label class="cell-color-control" for="cell-color">Section colour<select id="cell-color" aria-label="Section colour"></select></label>
+              <div class="cell-color-control"><span>Section colour</span><button id="cell-color" class="cell-color-trigger" type="button" data-color="#bb2026" aria-label="Section colour: Publish 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span class="color-swatch" style="--swatch:#bb2026"></span></button></div>
               <label class="empty-control" for="cell-empty"><input id="cell-empty" type="checkbox"> Empty section</label>
               <button id="reset-cell-color" class="reset-cell-button" type="button">Use group default</button>
             </div>
@@ -113,5 +113,8 @@
       </section>
       <footer class="page-footer"><span>Pressbooks Shapes</span><span>Concentric composition · SVG export</span></footer>
     </main>
+    <div id="palette-popover" class="palette-popover" role="dialog" aria-label="Choose a colour" hidden>
+      <div id="palette-grid" class="palette-grid" role="radiogroup" aria-label="Pressbooks colour palette"></div>
+    </div>
   </body>
 </html>
