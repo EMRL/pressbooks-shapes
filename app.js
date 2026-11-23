@@ -291,7 +291,7 @@ function renderSegmentEditor(settings) {
   cellEditor.empty.checked = emptyCells.has(selectedKey);
   cellEditor.reset.disabled = !cellColors.has(selectedKey);
   const position = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
-  cellEditor.positionTitle.textContent = "Move selected group " + (selectedCell.segment + 1);
+  cellEditor.positionTitle.textContent = "Selected group " + (selectedCell.segment + 1);
   cellEditor.x.value = String(position.x);
   cellEditor.y.value = String(position.y);
   const groupRotation = segmentRotations.get(selectedCell.segment) || 0;
