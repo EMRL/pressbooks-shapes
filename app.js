@@ -177,8 +177,6 @@ function render() {
       path.setAttribute("fill", cellColor(settings, ring, segment));
       const segmentOffset = segmentOffsets.get(segment) || { x: 0, y: 0 };
       path.setAttribute("transform", "translate(" + segmentOffset.x + " " + segmentOffset.y + ")");
-      const segmentOffset = segmentOffsets.get(segment) || { x: 0, y: 0 };
-      path.setAttribute("transform", "translate(" + segmentOffset.x + " " + segmentOffset.y + ")");
       path.setAttribute("fill-rule", "evenodd");
       path.dataset.ring = String(ring + 1);
       path.dataset.segment = String(segment + 1);
@@ -207,7 +205,7 @@ function render() {
   }
 
   outputs.rings.value = settings.rings + (settings.rings === 1 ? " ring" : " rings");
-  outputs.segments.value = settings.segments + (settings.segments === 1 ? " segment" : " segments");
+  outputs.segments.value = settings.segments + (settings.segments === 1 ? " group" : " groups");
   outputs.spacing.value = settings.spacing + " px";
   outputs.clearance.value = Math.round(settings.clearance * 100) + "% of radius";
   outputs.dotSize.value = Math.round(settings.dotSize * 100) + "% of diameter";
@@ -224,7 +222,7 @@ function render() {
   document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% VARIATION";
   stage.classList.toggle("has-background", settings.background);
   preview.querySelector("#shape-desc").textContent =
-    settings.rings + " concentric rings divided into " + settings.segments + " colored segments, with " + Math.round(settings.variation * 100) + " percent variation.";
+    settings.rings + " concentric rings arranged in " + settings.segments + " color groups, with " + Math.round(settings.variation * 100) + " percent variation.";
   renderSegmentEditor(settings);
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
@@ -344,7 +342,7 @@ function buildExportSvg() {
   title.textContent = "Pressbooks Shapes concentric ring composition";
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
-  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " segments.";
+  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups.";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
 
