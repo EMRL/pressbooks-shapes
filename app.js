@@ -323,13 +323,13 @@ function attachNumericInputs() {
       const value = Math.max(Number(range.min), Math.min(Number(range.max), Number(number.value)));
       range.value = String(value);
       number.value = range.value;
-      render();
+      range.dispatchEvent(new Event("input", { bubbles: true }));
     });
     number.addEventListener("change", function () {
       const value = number.value === "" ? Number(range.value) : Math.max(Number(range.min), Math.min(Number(range.max), Number(number.value)));
       range.value = String(value);
       number.value = range.value;
-      render();
+      range.dispatchEvent(new Event("input", { bubbles: true }));
     });
   });
 }
