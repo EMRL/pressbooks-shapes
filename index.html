@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f4f2ed">
-    <meta name="description" content="Create a radial shape and export it as SVG.">
-    <title>Pressbooks Shapes · Radial generator</title>
+    <meta name="description" content="Build precise concentric compositions and export them as SVG.">
+    <title>Pressbooks Shapes · Concentric composition</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
         <span class="brand-name">Pressbooks <b>Shapes</b></span>
       </a>
-      <span class="version-tag">RADIAL · 01</span>
+      <span class="version-tag">COMPOSITION · 01</span>
     </header>
     <main id="main" class="layout">
       <section class="intro" aria-labelledby="page-title">
@@ -39,16 +39,19 @@
               <g id="shape-art"></g>
             </svg>
           </div>
-          <div class="preview-foot"><span id="shape-count">4 RINGS</span><span id="variation-readout">4 SEGMENTS</span></div>
+          <div class="preview-foot"><span id="shape-count">5 RINGS</span><span id="variation-readout">0% VARIATION</span></div>
         </section>
         <aside class="controls-panel" aria-label="Shape controls">
           <div class="controls-head">
             <div><span class="panel-kicker">DESIGN CONTROLS</span><h2>Build the composition</h2></div>
           </div>
-          <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">4 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">5 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="5" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
           <div class="control-group"><div class="control-label"><label for="segments">Segments</label><output id="segments-output" for="segments">4 segments</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="spacing">Ring spacing</label><output id="spacing-output" for="spacing">12 px</output></div><input id="spacing" name="spacing" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>Tight</span><span>Open</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="core">Center size</label><output id="core-output" for="core">16%</output></div><input id="core" name="core" type="range" min="0" max="45" value="16" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="spacing">Ring spacing</label><output id="spacing-output" for="spacing">8 px</output></div><input id="spacing" name="spacing" type="range" min="0" max="24" value="8" step="1"><div class="range-ends"><span>Tight</span><span>Open</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="clearance">Inner clearance</label><output id="clearance-output" for="clearance">36% of radius</output></div><input id="clearance" name="clearance" type="range" min="15" max="60" value="36" step="1"><div class="range-ends"><span>Small</span><span>Large</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="dot-size">Center dot size</label><output id="dot-size-output" for="dot-size">12% of diameter</output></div><input id="dot-size" name="dot-size" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
+          <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="30" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
+          <div class="control-group"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
           <div class="control-group"><div class="control-label"><label for="scale">Scale and crop</label><output id="scale-output" for="scale">125%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="125" step="1"><div class="range-ends"><span>Fit</span><span>Crop</span></div></div>
           <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"></div>
           <div class="divider"></div>
@@ -62,11 +65,11 @@
             </div>
           </fieldset>
           <div class="bottom-controls">
-            <label class="color-control" for="core-color"><span>Center color</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="core-color" type="color" value="#a9aaa9" aria-label="Center color"></label>
+            <label class="color-control" for="dot-color"><span>Center dot colour</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="dot-color" type="color" value="#a9aaa9" aria-label="Center dot colour"></label>
             <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
           </div>
           <div class="export-row"><button class="export-button" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
-          <p class="export-note">Adjust the ring geometry, sector count, colour order, and crop. Export a 600 × 600 SVG.</p>
+          <p class="export-note">Variation starts at 0% for a regular, repeatable composition. Adjust ring geometry, segment colours, and crop, then export a 600 × 600 SVG.</p>
         </aside>
       </div>
       <footer class="page-footer"><span>PRESSBOOKS SHAPES</span><span>CONCENTRIC COMPOSITION · SVG EXPORT</span></footer>

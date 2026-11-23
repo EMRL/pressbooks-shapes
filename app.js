@@ -4,18 +4,23 @@ const controls = {
   rings: document.querySelector("#rings"),
   segments: document.querySelector("#segments"),
   spacing: document.querySelector("#spacing"),
-  core: document.querySelector("#core"),
+  clearance: document.querySelector("#clearance"),
+  dotSize: document.querySelector("#dot-size"),
+  variation: document.querySelector("#variation"),
   scale: document.querySelector("#scale"),
   rotation: document.querySelector("#rotation"),
   colors: Array.from(document.querySelectorAll("[data-segment-color]")),
-  coreColor: document.querySelector("#core-color"),
+  dotColor: document.querySelector("#dot-color"),
   background: document.querySelector("#background")
 };
 const outputs = {
   rings: document.querySelector("#rings-output"),
   segments: document.querySelector("#segments-output"),
   spacing: document.querySelector("#spacing-output"),
-  core: document.querySelector("#core-output"),
+  clearance: document.querySelector("#clearance-output"),
+  dotSize: document.querySelector("#dot-size-output"),
+  variation: document.querySelector("#variation-output"),
+  bandWidth: document.querySelector("#band-width-output"),
   scale: document.querySelector("#scale-output"),
   rotation: document.querySelector("#rotation-output")
 };
@@ -87,11 +92,13 @@ function readSettings() {
     rings: Number(controls.rings.value),
     segments: Number(controls.segments.value),
     spacing: Number(controls.spacing.value),
-    core: Number(controls.core.value) / 100,
+    clearance: Number(controls.clearance.value) / 100,
+    dotSize: Number(controls.dotSize.value) / 100,
+    variation: Number(controls.variation.value) / 100,
     scale: Number(controls.scale.value) / 100,
     rotation: Number(controls.rotation.value),
     colors: controls.colors.map(function (input) { return input.value.toUpperCase(); }),
-    coreColor: controls.coreColor.value.toUpperCase(),
+    dotColor: controls.dotColor.value.toUpperCase(),
     background: controls.background.checked
   };
 }
@@ -99,10 +106,11 @@ function readSettings() {
 function render() {
   const settings = readSettings();
   const outerRadius = 245 * settings.scale;
-  const coreRadius = outerRadius * settings.core;
-  const radialSpace = Math.max(1, outerRadius - coreRadius);
+  const innerRadius = outerRadius * settings.clearance;
+  const radialSpace = Math.max(1, outerRadius - innerRadius);
   const gap = Math.min(settings.spacing, radialSpace / (settings.rings * 2));
   const ringWidth = (radialSpace - gap * (settings.rings - 1)) / settings.rings;
+  const dotRadius = outerRadius * settings.dotSize;
   const segmentAngle = 360 / settings.segments;
   art.replaceChildren();
 
@@ -119,8 +127,10 @@ function render() {
     const inner = outer - ringWidth;
 
     for (let segment = 0; segment < settings.segments; segment += 1) {
-      const start = 180 + settings.rotation + segment * segmentAngle;
-      const end = start + segmentAngle;
+      const ringJitter = settings.variation === 0 ? 0 : seededUnit(ring + 1) * 2 - 1;
+      const offset = ringJitter * settings.variation * segmentAngle * 0.3;
+      const start = 180 + settings.rotation + ring * offset + segment * segmentAngle;
+      const end = 180 + settings.rotation + ring * offset + (segment + 1) * segmentAngle;
       const path = document.createElementNS(SVG_NS, "path");
       path.setAttribute("d", createRingSegment(outer, inner, start, end));
       path.setAttribute("fill", settings.colors[segment % settings.colors.length]);
@@ -131,32 +141,40 @@ function render() {
     }
   }
 
-  if (settings.core > 0) {
+  if (settings.dotSize > 0) {
     const core = document.createElementNS(SVG_NS, "circle");
     core.setAttribute("cx", String(CENTER));
     core.setAttribute("cy", String(CENTER));
-    core.setAttribute("r", String(rounded(coreRadius)));
-    core.setAttribute("fill", settings.coreColor);
+    core.setAttribute("r", String(rounded(dotRadius)));
+    core.setAttribute("fill", settings.dotColor);
     art.append(core);
   }
 
   outputs.rings.value = settings.rings + (settings.rings === 1 ? " ring" : " rings");
   outputs.segments.value = settings.segments + (settings.segments === 1 ? " segment" : " segments");
   outputs.spacing.value = settings.spacing + " px";
-  outputs.core.value = Math.round(settings.core * 100) + "%";
+  outputs.clearance.value = Math.round(settings.clearance * 100) + "% of radius";
+  outputs.dotSize.value = Math.round(settings.dotSize * 100) + "% of diameter";
+  outputs.variation.value = Math.round(settings.variation * 100) + "%";
+  outputs.bandWidth.value = rounded(ringWidth) + " px";
   outputs.scale.value = Math.round(settings.scale * 100) + "%";
   outputs.rotation.value = settings.rotation + "°";
   document.querySelector("#shape-count").textContent = settings.rings + " RINGS";
-  document.querySelector("#variation-readout").textContent = settings.segments + " SEGMENTS";
+  document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% VARIATION";
   stage.classList.toggle("has-background", settings.background);
   preview.querySelector("#shape-desc").textContent =
-    settings.rings + " concentric rings divided into " + settings.segments + " colored segments.";
+    settings.rings + " concentric rings divided into " + settings.segments + " colored segments, with " + Math.round(settings.variation * 100) + " percent variation.";
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
     const max = Number(input.max);
     const percentage = ((Number(input.value) - min) / (max - min)) * 100;
     input.style.setProperty("--range-progress", percentage + "%");
   });
+}
+
+function seededUnit(value) {
+  const x = Math.sin(value * 127.1 + 4821) * 43758.5453;
+  return x - Math.floor(x);
 }
 
 function buildExportSvg() {
