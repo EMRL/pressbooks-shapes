@@ -45,9 +45,9 @@ const stage = document.querySelector("#preview-stage");
 const segmentGrid = document.querySelector("#segment-grid");
 const palettePopover = document.querySelector("#palette-popover");
 const paletteGrid = document.querySelector("#palette-grid");
+const sectionPaletteActions = document.querySelector("#section-palette-actions");
 const cellEditor = {
   label: document.querySelector("#selected-cell-label"),
-  color: document.querySelector("#cell-color"),
   empty: document.querySelector("#cell-empty"),
   groupEmpty: document.querySelector("#group-empty"),
   reset: document.querySelector("#reset-cell-color"),
@@ -66,6 +66,7 @@ const segmentOffsets = new Map();
 const segmentRotations = new Map();
 const rangeNumbers = new Map();
 let selectedCell = { ring: 0, segment: 0 };
+let activeGroup = 0;
 let paletteTarget = null;
 
 function paletteLabel(hex) {
@@ -88,7 +89,6 @@ controls.colors.forEach(function (button, index) {
   updateColourTrigger(button, DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length], "Group " + (index + 1) + " default colour");
 });
 updateColourTrigger(controls.dotColor, "#a7a8a9", "Centre dot colour");
-updateColourTrigger(cellEditor.color, DEFAULT_GROUP_COLOURS[0], "Section colour");
 
 function cellKey(ring, segment) {
   return ring + ":" + segment;
@@ -124,6 +124,7 @@ function closePalette(restoreFocus) {
   const trigger = paletteTarget.trigger;
   trigger.setAttribute("aria-expanded", "false");
   palettePopover.hidden = true;
+  sectionPaletteActions.hidden = true;
   paletteTarget = null;
   if (restoreFocus) trigger.focus();
 }
@@ -137,6 +138,7 @@ function choosePaletteColour(hex) {
     updateColourTrigger(controls.dotColor, hex, "Centre dot colour");
   } else {
     cellColors.set(cellKey(target.ring, target.segment), hex.toUpperCase());
+    emptyCells.delete(cellKey(target.ring, target.segment));
   }
   closePalette(true);
   render();
@@ -150,6 +152,13 @@ function openPalette(trigger, type, index) {
   closePalette(false);
   paletteTarget = { trigger, type, index, ring: selectedCell.ring, segment: selectedCell.segment };
   trigger.setAttribute("aria-expanded", "true");
+  sectionPaletteActions.hidden = type !== "cell";
+  if (type === "cell") {
+    const key = cellKey(paletteTarget.ring, paletteTarget.segment);
+    cellEditor.empty.checked = emptyGroups.has(paletteTarget.segment) || emptyCells.has(key);
+    cellEditor.empty.disabled = emptyGroups.has(paletteTarget.segment);
+    cellEditor.reset.disabled = !cellColors.has(key);
+  }
   const selected = targetColour(paletteTarget).toUpperCase();
   paletteGrid.replaceChildren();
   BRAND_PALETTE.forEach(function (family) {
@@ -212,6 +221,8 @@ document.addEventListener("scroll", positionPalette, true);
 function selectCell(ring, segment) {
   selectedCell = { ring, segment };
   render();
+  const trigger = segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
+  if (trigger) openPalette(trigger, "cell");
 }
 
 function pointAt(radius, angle) {
@@ -443,6 +454,7 @@ function render() {
 function renderSegmentEditor(settings) {
   selectedCell.ring = Math.min(selectedCell.ring, settings.rings - 1);
   selectedCell.segment = Math.min(selectedCell.segment, settings.segments - 1);
+  activeGroup = Math.min(activeGroup, settings.segments - 1);
   segmentGrid.replaceChildren();
   segmentGrid.style.setProperty("--segment-columns", String(settings.segments));
 
@@ -453,9 +465,17 @@ function renderSegmentEditor(settings) {
   corner.textContent = "Ring";
   heading.append(corner);
   for (let segment = 0; segment < settings.segments; segment += 1) {
-    const label = document.createElement("span");
+    const label = document.createElement("button");
+    label.type = "button";
     label.className = "segment-column-label";
     label.textContent = "G" + (segment + 1);
+    label.setAttribute("aria-label", "Edit group " + (segment + 1));
+    label.setAttribute("aria-pressed", String(activeGroup === segment));
+    if (activeGroup === segment) label.classList.add("is-active");
+    label.addEventListener("click", function () {
+      activeGroup = segment;
+      render();
+    });
     heading.append(label);
   }
   segmentGrid.append(heading);
@@ -485,20 +505,14 @@ function renderSegmentEditor(settings) {
     segmentGrid.append(row);
   }
 
-  const selectedKey = cellKey(selectedCell.ring, selectedCell.segment);
   cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
-  updateColourTrigger(cellEditor.color, cellColor(settings, selectedCell.ring, selectedCell.segment), "Section colour");
-  const groupIsEmpty = emptyGroups.has(selectedCell.segment);
+  const groupIsEmpty = emptyGroups.has(activeGroup);
   cellEditor.groupEmpty.checked = groupIsEmpty;
-  cellEditor.empty.checked = groupIsEmpty || emptyCells.has(selectedKey);
-  cellEditor.empty.disabled = groupIsEmpty;
-  cellEditor.empty.closest(".empty-control").classList.toggle("is-disabled", groupIsEmpty);
-  cellEditor.reset.disabled = !cellColors.has(selectedKey);
-  const position = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
-  cellEditor.positionTitle.textContent = "Selected group " + (selectedCell.segment + 1);
+  const position = segmentOffsets.get(activeGroup) || { x: 0, y: 0 };
+  cellEditor.positionTitle.textContent = "Group " + (activeGroup + 1);
   cellEditor.x.value = String(position.x);
   cellEditor.y.value = String(position.y);
-  const groupRotation = segmentRotations.get(selectedCell.segment) || 0;
+  const groupRotation = segmentRotations.get(activeGroup) || 0;
   cellEditor.rotation.value = String(groupRotation);
   cellEditor.rotationOutput.value = groupRotation + "°";
   cellEditor.xOutput.value = position.x + " units";
@@ -598,34 +612,45 @@ controls.colors.forEach(function (button, index) {
   button.addEventListener("click", function () { openPalette(button, "group", index); });
 });
 controls.dotColor.addEventListener("click", function () { openPalette(controls.dotColor, "dot"); });
-cellEditor.color.addEventListener("click", function () { openPalette(cellEditor.color, "cell"); });
 function updateSegmentRotation(value) {
-  segmentRotations.set(selectedCell.segment, Number(value));
+  segmentRotations.set(activeGroup, Number(value));
   render();
 }
 cellEditor.rotation.addEventListener("input", function () { updateSegmentRotation(cellEditor.rotation.value); });
 
 function updateSegmentOffset(axis, value) {
-  const current = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
-  segmentOffsets.set(selectedCell.segment, { ...current, [axis]: Number(value) });
+  const current = segmentOffsets.get(activeGroup) || { x: 0, y: 0 };
+  segmentOffsets.set(activeGroup, { ...current, [axis]: Number(value) });
   render();
 }
 cellEditor.x.addEventListener("input", function () { updateSegmentOffset("x", cellEditor.x.value); });
 cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", cellEditor.y.value); });
 attachNumericInputs();
 cellEditor.groupEmpty.addEventListener("change", function () {
-  if (cellEditor.groupEmpty.checked) emptyGroups.add(selectedCell.segment);
-  else emptyGroups.delete(selectedCell.segment);
+  if (cellEditor.groupEmpty.checked) emptyGroups.add(activeGroup);
+  else emptyGroups.delete(activeGroup);
   render();
 });
 cellEditor.empty.addEventListener("change", function () {
-  const key = cellKey(selectedCell.ring, selectedCell.segment);
+  if (!paletteTarget || paletteTarget.type !== "cell") return;
+  const key = cellKey(paletteTarget.ring, paletteTarget.segment);
   if (cellEditor.empty.checked) emptyCells.add(key);
   else emptyCells.delete(key);
   render();
+  if (paletteTarget) {
+    const trigger = segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
+    if (trigger) {
+      paletteTarget.trigger = trigger;
+      trigger.setAttribute("aria-expanded", "true");
+      positionPalette();
+    }
+  }
 });
 cellEditor.reset.addEventListener("click", function () {
-  cellColors.delete(cellKey(selectedCell.ring, selectedCell.segment));
+  if (!paletteTarget || paletteTarget.type !== "cell") return;
+  cellColors.delete(cellKey(paletteTarget.ring, paletteTarget.segment));
+  emptyCells.delete(cellKey(paletteTarget.ring, paletteTarget.segment));
   render();
+  closePalette(false);
 });
 render();
