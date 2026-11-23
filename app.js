@@ -173,10 +173,14 @@ function openPalette(trigger, type, index) {
         const options = Array.from(paletteGrid.querySelectorAll(".palette-option"));
         const current = options.indexOf(swatch);
         let next = current;
-        if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (current + 1) % options.length;
-        else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (current - 1 + options.length) % options.length;
-        else if (event.key === "Home") next = 0;
-        else if (event.key === "End") next = options.length - 1;
+        const rowStart = Math.floor(current / 6) * 6;
+        const rowEnd = Math.min(rowStart + 5, options.length - 1);
+        if (event.key === "ArrowRight") next = Math.min(current + 1, rowEnd);
+        else if (event.key === "ArrowLeft") next = Math.max(current - 1, rowStart);
+        else if (event.key === "ArrowDown") next = Math.min(current + 6, options.length - 1);
+        else if (event.key === "ArrowUp") next = Math.max(current - 6, 0);
+        else if (event.key === "Home") next = rowStart;
+        else if (event.key === "End") next = rowEnd;
         else return;
         event.preventDefault();
         options.forEach(function (option, optionIndex) { option.tabIndex = optionIndex === next ? 0 : -1; });
