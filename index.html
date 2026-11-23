@@ -56,23 +56,23 @@
           <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"></div>
           <div class="divider"></div>
           <fieldset class="palette-control">
-            <legend>Default quadrant colours</legend>
+            <legend>Default group colours</legend>
             <div class="palette-swatches">
-              <label class="palette-swatch" style="--swatch:#b93632"><span>1</span><input data-segment-color type="color" value="#b93632" aria-label="Segment colour 1"></label>
-              <label class="palette-swatch" style="--swatch:#5c9eac"><span>2</span><input data-segment-color type="color" value="#5c9eac" aria-label="Segment colour 2"></label>
-              <label class="palette-swatch" style="--swatch:#f2b128"><span>3</span><input data-segment-color type="color" value="#f2b128" aria-label="Segment colour 3"></label>
-              <label class="palette-swatch" style="--swatch:#00a181"><span>4</span><input data-segment-color type="color" value="#00a181" aria-label="Segment colour 4"></label>
+              <label class="palette-swatch" style="--swatch:#b93632"><span>1</span><input data-segment-color type="color" value="#b93632" aria-label="Group colour 1"></label>
+              <label class="palette-swatch" style="--swatch:#5c9eac"><span>2</span><input data-segment-color type="color" value="#5c9eac" aria-label="Group colour 2"></label>
+              <label class="palette-swatch" style="--swatch:#f2b128"><span>3</span><input data-segment-color type="color" value="#f2b128" aria-label="Group colour 3"></label>
+              <label class="palette-swatch" style="--swatch:#00a181"><span>4</span><input data-segment-color type="color" value="#00a181" aria-label="Group colour 4"></label>
             </div>
           </fieldset>
           <fieldset class="segment-editor">
             <legend>Individual sections</legend>
-            <p class="segment-editor-help">Choose a ring and segment. Each section can use its own colour or be left empty.</p>
-            <div id="segment-grid" class="segment-grid" aria-label="Ring and segment colour grid"></div>
+            <p class="segment-editor-help">Choose a ring and object group. Each section can use its own colour or be left empty.</p>
+            <div id="segment-grid" class="segment-grid" aria-label="Ring and object group colour grid"></div>
             <div class="cell-editor">
               <output id="selected-cell-label">Ring 1 · Segment 1</output>
               <label class="cell-color-control" for="cell-color">Section colour<input id="cell-color" type="color" value="#b93632"></label>
               <label class="empty-control" for="cell-empty"><input id="cell-empty" type="checkbox"> Empty section</label>
-              <button id="reset-cell-color" class="reset-cell-button" type="button">Use quadrant default</button>
+              <button id="reset-cell-color" class="reset-cell-button" type="button">Use group default</button>
             </div>
             <div class="segment-position">
               <div class="control-label"><strong id="position-title">Move selected quadrant 1</strong></div>
@@ -87,7 +87,12 @@
           </fieldset>
           <div class="bottom-controls">
             <label class="color-control" for="dot-color"><span>Center dot colour</span><span class="color-value"><span class="color-swatch" style="background:#a9aaa9"></span><code>EDIT</code></span><input id="dot-color" type="color" value="#a9aaa9" aria-label="Center dot colour"></label>
+            <label class="toggle-control" for="dot-visible"><span>Show center dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
             <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
+          </div>
+          <div class="dot-position-controls">
+            <div class="control-group"><div class="control-label"><label for="dot-x">Center dot horizontal position</label><output id="dot-x-output" for="dot-x">0 units</output></div><input id="dot-x" name="dot-x" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Left</span><span>Right</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="dot-y">Center dot vertical position</label><output id="dot-y-output" for="dot-y">0 units</output></div><input id="dot-y" name="dot-y" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Up</span><span>Down</span></div></div>
           </div>
           <div class="export-row"><button class="export-button" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
           <p class="export-note">Variation starts at 0% for a regular, repeatable composition. Increase scale to crop at the 600 × 600 artboard edges; the SVG export uses the same bounds.</p>
