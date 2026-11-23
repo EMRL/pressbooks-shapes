@@ -1,5 +1,14 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CENTER = 300;
+const BRAND_PALETTE = [
+  { name: "Publish", values: [["20", "#f1d2d4"], ["40", "#e4a6a8"], ["60", "#d6797d"], ["80", "#c94d51"], ["100", "#bb2026"], ["120", "#922723"]] },
+  { name: "Pathways", values: [["20", "#dfedf0"], ["40", "#bedae0"], ["60", "#9ec8d1"], ["80", "#7db5c1"], ["100", "#5da3b2"], ["120", "#4a828e"]] },
+  { name: "Directory", values: [["20", "#fdefd3"], ["40", "#fbdfa7"], ["60", "#f8cf7b"], ["80", "#f6bf4f"], ["100", "#f4af23"], ["120", "#c38c1c"]] },
+  { name: "Exchange", values: [["20", "#ccede5"], ["40", "#99dbcb"], ["60", "#66c8b1"], ["80", "#33b697"], ["100", "#00a47d"], ["120", "#008364"]] },
+  { name: "Commons Dark", values: [["20", "#d3d4d4"], ["40", "#a8a9aa"], ["60", "#7c7e7f"], ["80", "#515355"], ["100", "#25282a"], ["120", "#000000"]] },
+  { name: "Commons Light", values: [["20", "#edeeee"], ["40", "#dcdcdd"], ["60", "#cacbcb"], ["80", "#b9b9ba"], ["100", "#a7a8a9"], ["120", "#868687"]] }
+];
+const DEFAULT_GROUP_COLOURS = ["#bb2026", "#5da3b2", "#f4af23", "#00a47d"];
 const controls = {
   rings: document.querySelector("#rings"),
   segments: document.querySelector("#segments"),
@@ -55,6 +64,35 @@ const segmentOffsets = new Map();
 const segmentRotations = new Map();
 const rangeNumbers = new Map();
 let selectedCell = { ring: 0, segment: 0 };
+
+function populatePaletteSelect(select, initialValue) {
+  BRAND_PALETTE.forEach(function (family) {
+    const group = document.createElement("optgroup");
+    group.label = family.name;
+    family.values.forEach(function (entry) {
+      const option = document.createElement("option");
+      option.value = entry[1].toUpperCase();
+      option.textContent = family.name + " " + entry[0] + " · " + entry[1].toUpperCase();
+      group.append(option);
+    });
+    select.append(group);
+  });
+  select.value = initialValue.toUpperCase();
+}
+
+function paletteLabel(hex) {
+  for (const family of BRAND_PALETTE) {
+    const value = family.values.find(function (entry) { return entry[1].toUpperCase() === hex.toUpperCase(); });
+    if (value) return family.name + " " + value[0];
+  }
+  return hex.toUpperCase();
+}
+
+controls.colors.forEach(function (select, index) {
+  populatePaletteSelect(select, DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length]);
+});
+populatePaletteSelect(controls.dotColor, "#a7a8a9");
+populatePaletteSelect(cellEditor.color, DEFAULT_GROUP_COLOURS[0]);
 
 function cellKey(ring, segment) {
   return ring + ":" + segment;
@@ -166,7 +204,7 @@ function render() {
     const background = document.createElementNS(SVG_NS, "rect");
     background.setAttribute("width", "600");
     background.setAttribute("height", "600");
-    background.setAttribute("fill", "#FFFFFF");
+    background.setAttribute("fill", "#EDEEEE");
     art.append(background);
   }
 
@@ -277,12 +315,14 @@ function render() {
   outputs.dotY.value = settings.dotY + " units";
   controls.colors.forEach(function (input) {
     input.closest(".palette-swatch").style.setProperty("--swatch", input.value);
+    input.closest(".palette-swatch").querySelector("output").textContent = paletteLabel(input.value);
   });
-  document.querySelector("#shape-count").textContent = settings.rings + " RINGS";
-  document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% VARIATION";
+  controls.dotColor.closest(".color-control").style.setProperty("--swatch", controls.dotColor.value);
+  document.querySelector("#shape-count").textContent = settings.rings + (settings.rings === 1 ? " ring" : " rings");
+  document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% variation";
   stage.classList.toggle("has-background", settings.background);
   preview.querySelector("#shape-desc").textContent =
-    settings.rings + " concentric rings arranged in " + settings.segments + " color groups, with " + Math.round(settings.variation * 100) + " percent variation.";
+    settings.rings + " concentric rings arranged in " + settings.segments + " colour groups, with " + Math.round(settings.variation * 100) + " percent variation.";
   renderSegmentEditor(settings);
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
@@ -342,6 +382,7 @@ function renderSegmentEditor(settings) {
   const selectedKey = cellKey(selectedCell.ring, selectedCell.segment);
   cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
   cellEditor.color.value = cellColor(settings, selectedCell.ring, selectedCell.segment);
+  cellEditor.color.closest(".cell-color-control").style.setProperty("--swatch", cellEditor.color.value);
   const groupIsEmpty = emptyGroups.has(selectedCell.segment);
   cellEditor.groupEmpty.checked = groupIsEmpty;
   cellEditor.empty.checked = groupIsEmpty || emptyCells.has(selectedKey);
@@ -412,7 +453,7 @@ function buildExportSvg() {
   title.textContent = "Pressbooks Shapes concentric ring composition";
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
-  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups" + (controls.excludeOverlaps.checked ? " with group overlaps removed" : "") + ".";
+  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups" + (controls.excludeOverlaps.checked ? " with group overlaps made transparent" : "") + ".";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
 
@@ -433,9 +474,13 @@ function downloadSvg() {
 
 Object.values(controls).forEach(function (control) {
   if (Array.isArray(control)) {
-    control.forEach(function (input) { input.addEventListener("input", render); });
+    control.forEach(function (input) {
+      input.addEventListener("input", render);
+      input.addEventListener("change", render);
+    });
   } else if (control && control.type !== "checkbox" && control.type !== "color") {
     control.addEventListener("input", render);
+    if (control.tagName === "SELECT") control.addEventListener("change", render);
   } else if (control) {
     control.addEventListener("input", render);
     control.addEventListener("change", render);
@@ -457,6 +502,10 @@ cellEditor.x.addEventListener("input", function () { updateSegmentOffset("x", ce
 cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", cellEditor.y.value); });
 attachNumericInputs();
 cellEditor.color.addEventListener("input", function () {
+  cellColors.set(cellKey(selectedCell.ring, selectedCell.segment), cellEditor.color.value.toUpperCase());
+  render();
+});
+cellEditor.color.addEventListener("change", function () {
   cellColors.set(cellKey(selectedCell.ring, selectedCell.segment), cellEditor.color.value.toUpperCase());
   render();
 });
