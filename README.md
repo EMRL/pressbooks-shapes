@@ -17,5 +17,9 @@ Variation is deterministic and starts at 0%, so the initial composition keeps
 evenly aligned segments. Increase it to introduce subtle per-ring rotation.
 Edit the segment palette, rotation, and scale to explore other arrangements.
 
+Use the individual sections grid to select a ring-and-segment cell. Change its
+colour, leave it empty, or restore the shared quadrant colour. Clicking a
+visible segment in the preview selects the same cell in the grid.
+
 Select **Download SVG** to save a 600 by 600 vector file.
 The background stays transparent unless you enable the background control.
