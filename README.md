@@ -16,6 +16,8 @@ adjustments are under Advanced settings. Band width is calculated from the ring
 count, spacing, and inner clearance. The centre dot can be hidden, resized,
 recoloured, and moved independently.
 
+The Pressbooks palette is available in the group, section, and centre-dot colour menus. Each palette family includes values 20 through 120, with product group colours set to 100 by default.
+
 Variation is deterministic and starts at 0%, so the initial composition keeps
 evenly aligned groups. Increase it to introduce increasingly visible per-ring
 rotation. Whole-composition rotation turns the complete design inside the artboard;
@@ -24,7 +26,7 @@ Edit the group palette and scale to explore other arrangements.
 
 Use the individual sections grid to select a ring-and-group cell. Change its
 colour, leave it empty, or restore the shared group colour. You can also empty
-every section in a group at once. Enable **Knock out group overlaps** to make
+every section in a group at once. Enable **Make overlaps transparent** to make
 areas shared by different groups transparent. Clicking a visible section in the
 preview selects the same cell in the grid. Numeric fields sit
 beside every slider for precise values. The artwork starts at 100% scale so it
