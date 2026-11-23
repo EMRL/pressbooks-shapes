@@ -11,6 +11,9 @@ const controls = {
   rotation: document.querySelector("#rotation"),
   colors: Array.from(document.querySelectorAll("[data-segment-color]")),
   dotColor: document.querySelector("#dot-color"),
+  dotVisible: document.querySelector("#dot-visible"),
+  dotX: document.querySelector("#dot-x"),
+  dotY: document.querySelector("#dot-y"),
   background: document.querySelector("#background")
 };
 const outputs = {
@@ -22,7 +25,9 @@ const outputs = {
   variation: document.querySelector("#variation-output"),
   bandWidth: document.querySelector("#band-width-output"),
   scale: document.querySelector("#scale-output"),
-  rotation: document.querySelector("#rotation-output")
+  rotation: document.querySelector("#rotation-output"),
+  dotX: document.querySelector("#dot-x-output"),
+  dotY: document.querySelector("#dot-y-output")
 };
 const preview = document.querySelector("#shape-preview");
 const art = document.querySelector("#shape-art");
@@ -128,6 +133,9 @@ function readSettings() {
     rotation: Number(controls.rotation.value),
     colors: controls.colors.map(function (input) { return input.value.toUpperCase(); }),
     dotColor: controls.dotColor.value.toUpperCase(),
+    dotVisible: controls.dotVisible.checked,
+    dotX: Number(controls.dotX.value),
+    dotY: Number(controls.dotY.value),
     background: controls.background.checked
   };
 }
@@ -174,7 +182,7 @@ function render() {
       path.dataset.segment = String(segment + 1);
       path.setAttribute("role", "button");
       path.setAttribute("tabindex", "0");
-      path.setAttribute("aria-label", "Ring " + (ring + 1) + ", segment " + (segment + 1));
+      path.setAttribute("aria-label", "Ring " + (ring + 1) + ", group " + (segment + 1));
       if (selectedCell.ring === ring && selectedCell.segment === segment) path.classList.add("is-selected");
       path.addEventListener("click", function () { selectCell(ring, segment); });
       path.addEventListener("keydown", function (event) {
@@ -187,17 +195,17 @@ function render() {
     }
   }
 
-  if (settings.dotSize > 0) {
+  if (settings.dotVisible && settings.dotSize > 0) {
     const core = document.createElementNS(SVG_NS, "circle");
-    core.setAttribute("cx", String(CENTER));
-    core.setAttribute("cy", String(CENTER));
+    core.setAttribute("cx", String(CENTER + settings.dotX));
+    core.setAttribute("cy", String(CENTER + settings.dotY));
     core.setAttribute("r", String(rounded(dotRadius)));
     core.setAttribute("fill", settings.dotColor);
     art.append(core);
   }
 
   outputs.rings.value = settings.rings + (settings.rings === 1 ? " ring" : " rings");
-  outputs.segments.value = settings.segments + (settings.segments === 1 ? " segment" : " segments");
+  outputs.segments.value = settings.segments + (settings.segments === 1 ? " group" : " groups");
   outputs.spacing.value = settings.spacing + " px";
   outputs.clearance.value = Math.round(settings.clearance * 100) + "% of radius";
   outputs.dotSize.value = Math.round(settings.dotSize * 100) + "% of diameter";
@@ -205,6 +213,8 @@ function render() {
   outputs.bandWidth.value = rounded(ringWidth) + " px";
   outputs.scale.value = Math.round(settings.scale * 100) + "%";
   outputs.rotation.value = settings.rotation + "°";
+  outputs.dotX.value = settings.dotX + " units";
+  outputs.dotY.value = settings.dotY + " units";
   controls.colors.forEach(function (input) {
     input.closest(".palette-swatch").style.setProperty("--swatch", input.value);
   });
@@ -212,7 +222,7 @@ function render() {
   document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% VARIATION";
   stage.classList.toggle("has-background", settings.background);
   preview.querySelector("#shape-desc").textContent =
-    settings.rings + " concentric rings divided into " + settings.segments + " colored segments, with " + Math.round(settings.variation * 100) + " percent variation.";
+    settings.rings + " concentric rings arranged in " + settings.segments + " color groups, with " + Math.round(settings.variation * 100) + " percent variation.";
   renderSegmentEditor(settings);
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
@@ -237,7 +247,7 @@ function renderSegmentEditor(settings) {
   for (let segment = 0; segment < settings.segments; segment += 1) {
     const label = document.createElement("span");
     label.className = "segment-column-label";
-    label.textContent = String(segment + 1);
+    label.textContent = "G" + (segment + 1);
     heading.append(label);
   }
   segmentGrid.append(heading);
@@ -258,7 +268,7 @@ function renderSegmentEditor(settings) {
       cell.className = "segment-cell" + (empty ? " is-empty" : "");
       cell.style.setProperty("--cell-color", cellColor(settings, ring, segment));
       cell.textContent = empty ? "∅" : "";
-      cell.setAttribute("aria-label", "Ring " + (ring + 1) + ", segment " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
+      cell.setAttribute("aria-label", "Ring " + (ring + 1) + ", group " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
       cell.setAttribute("aria-pressed", String(selectedCell.ring === ring && selectedCell.segment === segment));
       if (selectedCell.ring === ring && selectedCell.segment === segment) cell.classList.add("is-selected");
       cell.addEventListener("click", function () { selectCell(ring, segment); });
@@ -268,16 +278,48 @@ function renderSegmentEditor(settings) {
   }
 
   const selectedKey = cellKey(selectedCell.ring, selectedCell.segment);
-  cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Segment " + (selectedCell.segment + 1);
+  cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
   cellEditor.color.value = cellColor(settings, selectedCell.ring, selectedCell.segment);
   cellEditor.empty.checked = emptyCells.has(selectedKey);
   cellEditor.reset.disabled = !cellColors.has(selectedKey);
   const position = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
-  cellEditor.positionTitle.textContent = (settings.segments === 4 ? "Move selected quadrant " : "Move selected segment ") + (selectedCell.segment + 1);
+  cellEditor.positionTitle.textContent = "Move selected group " + (selectedCell.segment + 1);
   cellEditor.x.value = String(position.x);
   cellEditor.y.value = String(position.y);
   cellEditor.xOutput.value = position.x + " units";
   cellEditor.yOutput.value = position.y + " units";
+}
+
+function attachNumericInputs() {
+  document.querySelectorAll('input[type="range"]').forEach(function (range) {
+    const number = document.createElement("input");
+    number.type = "number";
+    number.className = "range-number";
+    number.min = range.min;
+    number.max = range.max;
+    number.step = range.step;
+    number.value = range.value;
+    const label = document.querySelector('label[for="' + range.id + '"]');
+    number.setAttribute("aria-label", (label ? label.textContent : range.name) + " numeric value");
+    const row = document.createElement("div");
+    row.className = "range-input-row";
+    range.parentNode.insertBefore(row, range);
+    row.append(range, number);
+    range.addEventListener("input", function () { number.value = range.value; });
+    number.addEventListener("input", function () {
+      if (number.value === "") return;
+      const value = Math.max(Number(range.min), Math.min(Number(range.max), Number(number.value)));
+      range.value = String(value);
+      number.value = range.value;
+      render();
+    });
+    number.addEventListener("change", function () {
+      const value = number.value === "" ? Number(range.value) : Math.max(Number(range.min), Math.min(Number(range.max), Number(number.value)));
+      range.value = String(value);
+      number.value = range.value;
+      render();
+    });
+  });
 }
 
 function seededUnit(value) {
@@ -300,7 +342,7 @@ function buildExportSvg() {
   title.textContent = "Pressbooks Shapes concentric ring composition";
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
-  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " segments.";
+  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups.";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
 
@@ -337,6 +379,7 @@ function updateSegmentOffset(axis, value) {
 }
 cellEditor.x.addEventListener("input", function () { updateSegmentOffset("x", cellEditor.x.value); });
 cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", cellEditor.y.value); });
+attachNumericInputs();
 cellEditor.color.addEventListener("input", function () {
   cellColors.set(cellKey(selectedCell.ring, selectedCell.segment), cellEditor.color.value.toUpperCase());
   render();
