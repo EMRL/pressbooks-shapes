@@ -154,7 +154,7 @@ function render() {
   outputs.segments.value = settings.segments + (settings.segments === 1 ? " segment" : " segments");
   outputs.spacing.value = settings.spacing + " px";
   outputs.clearance.value = Math.round(settings.clearance * 100) + "% of radius";
-  outputs.dotSize.value = Math.round(settings.dotSize * 200) + "% of diameter";
+  outputs.dotSize.value = Math.round(settings.dotSize * 100) + "% of diameter";
   outputs.variation.value = Math.round(settings.variation * 100) + "%";
   outputs.bandWidth.value = rounded(ringWidth) + " px";
   outputs.scale.value = Math.round(settings.scale * 100) + "%";
