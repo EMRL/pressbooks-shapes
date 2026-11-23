@@ -9,12 +9,12 @@ The app does not require a build step or package installation.
 
 ## Concentric composition
 
-Set the number of rings and colour segments, then tune the spacing and clear
+Set the number of rings and colour groups, then tune the spacing and clear
 area at the centre. Band width is calculated from the ring count, spacing, and
 inner clearance. The centre dot can be hidden, resized, recoloured, and moved independently.
 
 Variation is deterministic and starts at 0%, so the initial composition keeps
-evenly aligned segments. Increase it to introduce subtle per-ring rotation.
+evenly aligned groups. Increase it to introduce subtle per-ring rotation.
 Edit the group palette, rotation, and scale to explore other arrangements. Each group can be moved horizontally or vertically across all rings.
 
 Use the individual sections grid to select a ring-and-group cell. Change its
