@@ -9,6 +9,7 @@ const BRAND_PALETTE = [
   { name: "Commons Light", values: [["20", "#edeeee"], ["40", "#dcdcdd"], ["60", "#cacbcb"], ["80", "#b9b9ba"], ["100", "#a7a8a9"], ["120", "#868687"]] }
 ];
 const DEFAULT_GROUP_COLOURS = ["#bb2026", "#5da3b2", "#f4af23", "#00a47d"];
+const groupColours = DEFAULT_GROUP_COLOURS.slice();
 const controls = {
   rings: document.querySelector("#rings"),
   segments: document.querySelector("#segments"),
@@ -18,7 +19,7 @@ const controls = {
   variation: document.querySelector("#variation"),
   scale: document.querySelector("#scale"),
   rotation: document.querySelector("#rotation"),
-  colors: Array.from(document.querySelectorAll("[data-segment-color]")),
+  colors: [],
   dotColor: document.querySelector("#dot-color"),
   dotVisible: document.querySelector("#dot-visible"),
   dotX: document.querySelector("#dot-x"),
@@ -43,14 +44,19 @@ const preview = document.querySelector("#shape-preview");
 const art = document.querySelector("#shape-art");
 const stage = document.querySelector("#preview-stage");
 const segmentGrid = document.querySelector("#segment-grid");
+const groupSwatches = document.querySelector("#group-swatches");
 const palettePopover = document.querySelector("#palette-popover");
 const paletteGrid = document.querySelector("#palette-grid");
 const sectionPaletteActions = document.querySelector("#section-palette-actions");
+const paletteActions = {
+  empty: document.querySelector("#palette-empty"),
+  emptyLabel: document.querySelector("#palette-empty-label"),
+  reset: document.querySelector("#palette-reset")
+};
 const cellEditor = {
   label: document.querySelector("#selected-cell-label"),
-  empty: document.querySelector("#cell-empty"),
-  groupEmpty: document.querySelector("#group-empty"),
-  reset: document.querySelector("#reset-cell-color"),
+  empty: paletteActions.empty,
+  reset: paletteActions.reset,
   positionTitle: document.querySelector("#position-title"),
   x: document.querySelector("#segment-x"),
   y: document.querySelector("#segment-y"),
@@ -85,10 +91,40 @@ function updateColourTrigger(button, hex, label) {
   button.setAttribute("aria-label", label + ": " + paletteLabel(hex));
 }
 
-controls.colors.forEach(function (button, index) {
-  updateColourTrigger(button, DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length], "Group " + (index + 1) + " default colour");
-});
 updateColourTrigger(controls.dotColor, "#a7a8a9", "Centre dot colour");
+
+function renderGroupSwatches(count) {
+  while (groupColours.length < count) {
+    groupColours.push(DEFAULT_GROUP_COLOURS[groupColours.length % DEFAULT_GROUP_COLOURS.length]);
+  }
+  if (controls.colors.length !== count) {
+    groupSwatches.replaceChildren();
+    controls.colors = [];
+    groupSwatches.style.setProperty("--group-count", String(count));
+    for (let index = 0; index < count; index += 1) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "palette-swatch";
+      button.dataset.segmentColor = "";
+      button.setAttribute("aria-haspopup", "dialog");
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-controls", "palette-popover");
+      const number = document.createElement("span");
+      number.textContent = String(index + 1);
+      button.append(number);
+      button.addEventListener("click", function () {
+        activeGroup = index;
+        render();
+        openPalette(controls.colors[index], "group", index);
+      });
+      controls.colors.push(button);
+      groupSwatches.append(button);
+    }
+  }
+  controls.colors.forEach(function (button, index) {
+    updateColourTrigger(button, groupColours[index], "Group " + (index + 1) + " default colour");
+  });
+}
 
 function cellKey(ring, segment) {
   return ring + ":" + segment;
@@ -133,15 +169,22 @@ function choosePaletteColour(hex) {
   if (!paletteTarget) return;
   const target = paletteTarget;
   if (target.type === "group") {
-    updateColourTrigger(controls.colors[target.index], hex, "Group " + (target.index + 1) + " default colour");
+    groupColours[target.index] = hex.toUpperCase();
   } else if (target.type === "dot") {
     updateColourTrigger(controls.dotColor, hex, "Centre dot colour");
   } else {
     cellColors.set(cellKey(target.ring, target.segment), hex.toUpperCase());
     emptyCells.delete(cellKey(target.ring, target.segment));
   }
-  closePalette(true);
+  closePalette(false);
   render();
+  if (target.type === "cell") {
+    segmentGrid.querySelector('.segment-cell[aria-pressed="true"]')?.focus();
+  } else if (target.type === "group") {
+    controls.colors[target.index]?.focus();
+  } else {
+    controls.dotColor.focus();
+  }
 }
 
 function openPalette(trigger, type, index) {
@@ -152,12 +195,20 @@ function openPalette(trigger, type, index) {
   closePalette(false);
   paletteTarget = { trigger, type, index, ring: selectedCell.ring, segment: selectedCell.segment };
   trigger.setAttribute("aria-expanded", "true");
-  sectionPaletteActions.hidden = type !== "cell";
+  sectionPaletteActions.hidden = type === "dot";
   if (type === "cell") {
     const key = cellKey(paletteTarget.ring, paletteTarget.segment);
     cellEditor.empty.checked = emptyGroups.has(paletteTarget.segment) || emptyCells.has(key);
     cellEditor.empty.disabled = emptyGroups.has(paletteTarget.segment);
-    cellEditor.reset.disabled = !cellColors.has(key);
+    cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key);
+    paletteActions.emptyLabel.textContent = "Empty section";
+    paletteActions.reset.textContent = "Use group default";
+  } else if (type === "group") {
+    cellEditor.empty.checked = emptyGroups.has(index);
+    cellEditor.empty.disabled = false;
+    cellEditor.reset.disabled = groupColours[index] === DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length];
+    paletteActions.emptyLabel.textContent = "Empty entire group";
+    paletteActions.reset.textContent = "Reset colour";
   }
   const selected = targetColour(paletteTarget).toUpperCase();
   paletteGrid.replaceChildren();
@@ -294,7 +345,7 @@ function readSettings() {
     variation: Number(controls.variation.value) / 100,
     scale: Number(controls.scale.value) / 100,
     rotation: Number(controls.rotation.value),
-    colors: controls.colors.map(function (button) { return button.dataset.color.toUpperCase(); }),
+    colors: groupColours.slice(0, Number(controls.segments.value)).map(function (hex) { return hex.toUpperCase(); }),
     dotColor: controls.dotColor.dataset.color.toUpperCase(),
     dotVisible: controls.dotVisible.checked,
     dotX: Number(controls.dotX.value),
@@ -305,6 +356,7 @@ function readSettings() {
 }
 
 function render() {
+  renderGroupSwatches(Number(controls.segments.value));
   const settings = readSettings();
   selectedCell.ring = Math.min(selectedCell.ring, settings.rings - 1);
   selectedCell.segment = Math.min(selectedCell.segment, settings.segments - 1);
@@ -506,8 +558,6 @@ function renderSegmentEditor(settings) {
   }
 
   cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
-  const groupIsEmpty = emptyGroups.has(activeGroup);
-  cellEditor.groupEmpty.checked = groupIsEmpty;
   const position = segmentOffsets.get(activeGroup) || { x: 0, y: 0 };
   cellEditor.positionTitle.textContent = "Group " + (activeGroup + 1);
   cellEditor.x.value = String(position.x);
@@ -608,9 +658,6 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
-controls.colors.forEach(function (button, index) {
-  button.addEventListener("click", function () { openPalette(button, "group", index); });
-});
 controls.dotColor.addEventListener("click", function () { openPalette(controls.dotColor, "dot"); });
 function updateSegmentRotation(value) {
   segmentRotations.set(activeGroup, Number(value));
@@ -626,19 +673,24 @@ function updateSegmentOffset(axis, value) {
 cellEditor.x.addEventListener("input", function () { updateSegmentOffset("x", cellEditor.x.value); });
 cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", cellEditor.y.value); });
 attachNumericInputs();
-cellEditor.groupEmpty.addEventListener("change", function () {
-  if (cellEditor.groupEmpty.checked) emptyGroups.add(activeGroup);
-  else emptyGroups.delete(activeGroup);
-  render();
-});
 cellEditor.empty.addEventListener("change", function () {
-  if (!paletteTarget || paletteTarget.type !== "cell") return;
-  const key = cellKey(paletteTarget.ring, paletteTarget.segment);
-  if (cellEditor.empty.checked) emptyCells.add(key);
-  else emptyCells.delete(key);
+  if (!paletteTarget) return;
+  if (paletteTarget.type === "group") {
+    if (cellEditor.empty.checked) emptyGroups.add(paletteTarget.index);
+    else emptyGroups.delete(paletteTarget.index);
+  } else if (paletteTarget.type === "cell") {
+    const key = cellKey(paletteTarget.ring, paletteTarget.segment);
+    if (cellEditor.empty.checked) emptyCells.add(key);
+    else emptyCells.delete(key);
+    cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key);
+  } else {
+    return;
+  }
   render();
   if (paletteTarget) {
-    const trigger = segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
+    const trigger = paletteTarget.type === "group"
+      ? controls.colors[paletteTarget.index]
+      : segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
     if (trigger) {
       paletteTarget.trigger = trigger;
       trigger.setAttribute("aria-expanded", "true");
@@ -647,10 +699,18 @@ cellEditor.empty.addEventListener("change", function () {
   }
 });
 cellEditor.reset.addEventListener("click", function () {
-  if (!paletteTarget || paletteTarget.type !== "cell") return;
-  cellColors.delete(cellKey(paletteTarget.ring, paletteTarget.segment));
-  emptyCells.delete(cellKey(paletteTarget.ring, paletteTarget.segment));
+  if (!paletteTarget) return;
+  const target = paletteTarget;
+  if (target.type === "cell") {
+    cellColors.delete(cellKey(target.ring, target.segment));
+    emptyCells.delete(cellKey(target.ring, target.segment));
+  } else if (target.type === "group") {
+    groupColours[target.index] = DEFAULT_GROUP_COLOURS[target.index % DEFAULT_GROUP_COLOURS.length];
+  } else {
+    return;
+  }
   render();
   closePalette(false);
+  (target.type === "group" ? controls.colors[target.index] : segmentGrid.querySelector('.segment-cell[aria-pressed="true"]'))?.focus();
 });
 render();
