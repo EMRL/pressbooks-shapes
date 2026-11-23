@@ -346,6 +346,7 @@ function renderSegmentEditor(settings) {
   cellEditor.groupEmpty.checked = groupIsEmpty;
   cellEditor.empty.checked = groupIsEmpty || emptyCells.has(selectedKey);
   cellEditor.empty.disabled = groupIsEmpty;
+  cellEditor.empty.closest(".empty-control").classList.toggle("is-disabled", groupIsEmpty);
   cellEditor.reset.disabled = !cellColors.has(selectedKey);
   const position = segmentOffsets.get(selectedCell.segment) || { x: 0, y: 0 };
   cellEditor.positionTitle.textContent = "Selected group " + (selectedCell.segment + 1);
