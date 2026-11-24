@@ -1028,6 +1028,11 @@ function updateSegmentOffset(axis, value) {
 }
 cellEditor.x.addEventListener("input", function () { updateSegmentOffset("x", cellEditor.x.value); });
 cellEditor.y.addEventListener("input", function () { updateSegmentOffset("y", cellEditor.y.value); });
+document.querySelector("#reset-group-position").addEventListener("click", function () {
+  segmentOffsets.delete(activeGroup);
+  segmentRotations.delete(activeGroup);
+  render();
+});
 attachNumericInputs();
 cellEditor.empty.addEventListener("change", function () {
   if (!paletteTarget) return;
