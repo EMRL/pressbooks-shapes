@@ -702,6 +702,66 @@ function downloadSvg() {
   URL.revokeObjectURL(url);
 }
 
+function buildPresetPayload() {
+  const settings = readSettings();
+  return {
+    format: "pressbooks-shapes-preset",
+    version: 1,
+    designType: "concentric",
+    randomSeed: compositionSeed,
+    settings: {
+      rings: settings.rings,
+      groups: settings.segments,
+      ringSpacingPx: settings.spacing,
+      innerClearancePercent: Math.round(settings.clearance * 100),
+      variationPercent: Math.round(settings.variation * 100),
+      scalePercent: Math.round(settings.scale * 100),
+      rotationDegrees: settings.rotation,
+      background: settings.background,
+      excludeOverlaps: settings.excludeOverlaps,
+      centreDot: {
+        visible: settings.dotVisible,
+        sizePercent: Math.round(settings.dotSize * 100),
+        colour: settings.dotColor,
+        horizontalPosition: settings.dotX,
+        verticalPosition: settings.dotY
+      }
+    },
+    groups: Array.from({ length: settings.segments }, function (_, segment) {
+      const offset = segmentOffsets.get(segment) || { x: 0, y: 0 };
+      return {
+        index: segment + 1,
+        colour: settings.colors[segment],
+        empty: emptyGroups.has(segment),
+        horizontalOffset: offset.x,
+        verticalOffset: offset.y,
+        rotationDegrees: segmentRotations.get(segment) || 0,
+        sections: Array.from({ length: settings.rings }, function (__, ring) {
+          const key = cellKey(ring, segment);
+          return {
+            ring: ring + 1,
+            empty: emptyCells.has(key),
+            colour: cellColors.has(key) ? cellColors.get(key).toUpperCase() : null
+          };
+        })
+      };
+    })
+  };
+}
+
+function exportPresetSettings() {
+  const payload = buildPresetPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2) + "\n"], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "pressbooks-shapes-concentric-preset.json";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+}
+
 function createSurpriseCandidate() {
   const rings = randomInteger(3, 8);
   const segments = randomInteger(2, 8);
@@ -1002,6 +1062,7 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
+document.querySelector("#export-settings").addEventListener("click", exportPresetSettings);
 const surpriseButton = document.querySelector("#surprise-me");
 let surpriseAnimationTimer;
 surpriseButton.addEventListener("click", function () {
