@@ -26,7 +26,8 @@
 body { margin: 0; min-width: 320px; }
 button, input, select { font: inherit; }
 button { color: inherit; }
-.topbar { min-height: 64px; padding: 0 max(var(--content-gutter), calc((100vw - var(--content-width)) / 2 + var(--content-gutter))); border-bottom: 1px solid var(--light-60); display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--surface); }
+.topbar { min-height: 64px; padding: 0 var(--content-gutter); border-bottom: 1px solid var(--light-60); display: flex; align-items: center; justify-content: center; background: var(--surface); }
+.topbar-inner { width: min(100%, calc(var(--content-width) - var(--content-gutter) - var(--content-gutter))); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .topbar-actions { display: flex; align-items: center; gap: 18px; }
 .topbar-export { width: auto; min-height: 38px; padding: 0 12px; font-size: 12px; }
 .surprise-button { position: relative; flex: 0 0 auto; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--pathways-100); border-radius: 4px; background: var(--surface); color: var(--pathways-120); font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
@@ -161,6 +162,10 @@ input[type="range"]:focus-visible { outline: 2px solid var(--pathways-120); outl
 .group-inspector .segment-position { width: 100%; margin-top: 0; padding-top: 0; border-top: 0; }
 .segment-position .control-label { margin-bottom: 4px; color: var(--dark-100); font-size: 10px; }
 .segment-position .control-label strong { font-weight: 700; }
+.reset-position-button { display: inline-flex; align-items: center; gap: 4px; padding: 2px 0; border: 0; background: transparent; color: var(--pathways-120); font-size: 10px; cursor: pointer; }
+.reset-position-button i { font-size: 14px; }
+.reset-position-button:hover { color: var(--publish-100); }
+.reset-position-button:focus-visible { outline: 2px solid var(--pathways-120); outline-offset: 2px; }
 .segment-position .segment-editor-help { margin-bottom: 8px; }
 .group-empty-control { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; color: var(--dark-80); font-size: 10px; cursor: pointer; }
 .empty-control.is-disabled { opacity: .6; cursor: not-allowed; }

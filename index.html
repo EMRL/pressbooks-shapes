@@ -15,11 +15,13 @@
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#main" aria-label="Pressbooks Shapes home">
-        <img class="brand-mark" src="assets/pressbooks-brandmark.svg" alt="">
-        <span class="brand-name"><strong>Pressbooks</strong> Shapes</span>
-      </a>
-      <div class="topbar-actions"><button class="export-button topbar-export" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
+      <div class="topbar-inner">
+        <a class="brand" href="#main" aria-label="Pressbooks Shapes home">
+          <img class="brand-mark" src="assets/pressbooks-brandmark.svg" alt="">
+          <span class="brand-name"><strong>Pressbooks</strong> Shapes</span>
+        </a>
+        <div class="topbar-actions"><button class="export-button topbar-export" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
+      </div>
     </header>
     <span id="surprise-status" class="sr-only" role="status" aria-live="polite"></span>
     <main id="main" class="layout">
@@ -87,7 +89,7 @@
             </fieldset>
             <div class="group-inspector">
             <div class="segment-position">
-              <div class="control-label"><strong id="position-title">Group 1</strong></div>
+              <div class="control-label"><strong id="position-title">Group 1</strong><button class="reset-position-button" id="reset-group-position" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div>
               <p class="segment-editor-help">Move or rotate every ring section in the active group.</p>
               <label class="position-axis" for="segment-x"><span>Horizontal</span><output id="segment-x-output" for="segment-x">0 units</output></label>
               <input id="segment-x" name="segment-x" type="range" min="-100" max="100" value="0" step="1">
