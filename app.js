@@ -662,8 +662,9 @@ function attachNumericInputs() {
   });
 }
 
-function seededUnit(value) {
-  const x = Math.sin(value * 127.1 + compositionSeed) * 43758.5453;
+function seededUnit(value, seed) {
+  const seedValue = seed === undefined ? compositionSeed : seed;
+  const x = Math.sin(value * 127.1 + seedValue) * 43758.5453;
   return x - Math.floor(x);
 }
 
@@ -701,74 +702,287 @@ function downloadSvg() {
   URL.revokeObjectURL(url);
 }
 
-function generateSurprise() {
-  closePalette(false);
-  pendingGroupIndex = null;
-  groupInspector.classList.remove("is-fading-out");
-
+function createSurpriseCandidate() {
   const rings = randomInteger(3, 8);
   const segments = randomInteger(2, 8);
-  controls.rings.value = String(rings);
-  controls.segments.value = String(segments);
-  controls.spacing.value = String(randomInteger(2, 18));
-  controls.clearance.value = String(randomInteger(22, 48));
-  controls.variation.value = String(Math.random() < 0.24 ? 0 : randomInteger(4, 30));
-  controls.scale.value = String(randomInteger(85, 120));
-  controls.rotation.value = String(randomInteger(0, 359));
-  controls.dotSize.value = String(Math.random() < 0.2 ? 0 : randomInteger(6, 24));
-  controls.dotVisible.checked = Math.random() < 0.78;
-  controls.dotX.value = String(randomInteger(-30, 30, 5));
-  controls.dotY.value = String(randomInteger(-30, 30, 5));
-  controls.background.checked = Math.random() < 0.28;
-  controls.excludeOverlaps.checked = segments > 1 && Math.random() < 0.22;
-
+  const settings = {
+    rings: rings,
+    segments: segments,
+    spacing: randomInteger(2, 18),
+    clearance: randomInteger(22, 48),
+    variation: Math.random() < 0.24 ? 0 : randomInteger(4, 30),
+    scale: randomInteger(85, 120),
+    rotation: randomInteger(0, 359),
+    dotSize: Math.random() < 0.2 ? 0 : randomInteger(6, 24),
+    dotVisible: Math.random() < 0.78,
+    dotX: randomInteger(-30, 30, 5),
+    dotY: randomInteger(-30, 30, 5),
+    background: Math.random() < 0.28,
+    excludeOverlaps: segments > 1 && Math.random() < 0.22,
+    dotColor: randomChoice(BRAND_100_COLOURS)
+  };
   const familyCount = randomInteger(2, Math.min(4, segments));
   const colourFamilies = shuffled(BRAND_PALETTE).slice(0, familyCount);
-  groupColours.length = 0;
-  for (let segment = 0; segment < segments; segment += 1) {
+  const colours = Array.from({ length: segments }, function (_, segment) {
     const family = colourFamilies[segment % colourFamilies.length];
     const tone = Math.random() < 0.78 ? "100" : randomChoice(["80", "120"]);
-    groupColours.push(family.values.find(function (entry) { return entry[0] === tone; })[1].toUpperCase());
-  }
+    return family.values.find(function (entry) { return entry[0] === tone; })[1].toUpperCase();
+  });
 
-  cellColors.clear();
-  emptyCells.clear();
-  emptyGroups.clear();
-  segmentOffsets.clear();
-  segmentRotations.clear();
+  const candidate = {
+    type: "concentric",
+    settings: settings,
+    colours: colours,
+    cellColours: new Map(),
+    emptyCells: new Set(),
+    emptyGroups: new Set(),
+    groupOffsets: new Map(),
+    groupRotations: new Map(),
+    seed: randomInteger(1, 1000000000)
+  };
   for (let segment = 1; segment < segments; segment += 1) {
-    if (Math.random() < 0.12) emptyGroups.add(segment);
+    if (Math.random() < 0.12) candidate.emptyGroups.add(segment);
   }
-  const nonemptyGroups = Array.from({ length: segments }, function (_, index) { return index; })
-    .filter(function (segment) { return !emptyGroups.has(segment); });
   for (let ring = 0; ring < rings; ring += 1) {
-    for (const segment of nonemptyGroups) {
+    for (let segment = 0; segment < segments; segment += 1) {
+      if (candidate.emptyGroups.has(segment)) continue;
       const key = cellKey(ring, segment);
       const roll = Math.random();
-      if (roll < 0.055) emptyCells.add(key);
-      else if (roll < 0.13) cellColors.set(key, randomChoice(ALL_PALETTE_COLOURS));
+      if (roll < 0.055) candidate.emptyCells.add(key);
+      else if (roll < 0.13) candidate.cellColours.set(key, randomChoice(ALL_PALETTE_COLOURS));
     }
   }
-  emptyCells.delete(cellKey(0, 0));
+  candidate.emptyCells.delete(cellKey(0, 0));
 
   for (let segment = 0; segment < segments; segment += 1) {
     if (Math.random() < 0.62) {
       const offset = { x: randomInteger(-28, 28, 4), y: randomInteger(-28, 28, 4) };
-      if (offset.x || offset.y) segmentOffsets.set(segment, offset);
+      if (offset.x || offset.y) candidate.groupOffsets.set(segment, offset);
     }
     if (Math.random() < 0.58) {
       const rotation = randomInteger(-35, 35, 5);
-      if (rotation) segmentRotations.set(segment, rotation);
+      if (rotation) candidate.groupRotations.set(segment, rotation);
+    }
+  }
+  return candidate;
+}
+
+function paletteEntry(hex) {
+  for (let family = 0; family < BRAND_PALETTE.length; family += 1) {
+    const value = BRAND_PALETTE[family].values.find(function (entry) { return entry[1].toUpperCase() === hex.toUpperCase(); });
+    if (value) return { family: family, tone: Number(value[0]) };
+  }
+  return null;
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function scorePaletteHarmony(candidate) {
+  const entries = candidate.colours.map(paletteEntry).filter(Boolean);
+  const uniqueFamilies = new Set(entries.map(function (entry) { return entry.family; })).size;
+  const diversity = clamp01(uniqueFamilies / Math.min(3, candidate.settings.segments));
+  const baseToneShare = entries.length
+    ? entries.filter(function (entry) { return entry.tone === 100; }).length / entries.length
+    : 0;
+  let distinctNeighbours = 1;
+  if (entries.length > 1) {
+    let distinctCount = 0;
+    for (let index = 0; index < entries.length; index += 1) {
+      const current = entries[index];
+      const next = entries[(index + 1) % entries.length];
+      if (current.family !== next.family || Math.abs(current.tone - next.tone) >= 20) distinctCount += 1;
+    }
+    distinctNeighbours = distinctCount / entries.length;
+  }
+  const overrideShare = candidate.cellColours.size / Math.max(1, candidate.settings.rings * candidate.settings.segments);
+  const overrideRestraint = clamp01(1 - overrideShare / 0.25);
+  return 0.4 * diversity + 0.3 * baseToneShare + 0.2 * distinctNeighbours + 0.1 * overrideRestraint;
+}
+
+// Every composition family supplies the same normalized measures here. Keep
+// these weights and the retry logic shared as new shape generators are added.
+function scoreDesignCandidate(metrics) {
+  const palette = clamp01(metrics.palette);
+  const balance = clamp01(metrics.balance);
+  const negativeSpace = clamp01(metrics.negativeSpace);
+  const restraint = clamp01(metrics.restraint);
+  const valid = metrics.valid !== false;
+  const score = 0.30 * palette + 0.25 * balance + 0.25 * negativeSpace + 0.20 * restraint;
+  return { score: score, valid: valid, parts: { palette: palette, balance: balance, negativeSpace: negativeSpace, restraint: restraint } };
+}
+
+function scoreConcentricCandidate(candidate, geometry) {
+  const palette = scorePaletteHarmony(candidate);
+  const balance = clamp01(1 - geometry.centroidOffset / 0.2);
+  const negativeSpace = clamp01(1 - Math.abs(geometry.coverage - 0.36) / 0.36);
+  const offsets = Array.from({ length: candidate.settings.segments }, function (_, index) {
+    return candidate.groupOffsets.get(index) || { x: 0, y: 0 };
+  });
+  const rotations = Array.from({ length: candidate.settings.segments }, function (_, index) {
+    return Math.abs(candidate.groupRotations.get(index) || 0);
+  });
+  const meanOffset = offsets.reduce(function (sum, offset) { return sum + Math.hypot(offset.x, offset.y) / 40; }, 0) / offsets.length;
+  const meanRotation = rotations.reduce(function (sum, rotation) { return sum + rotation / 45; }, 0) / rotations.length;
+  const variation = candidate.settings.variation / 30;
+  const scaleChange = Math.abs(candidate.settings.scale - 100) / 30;
+  const restraint = clamp01(1 - (0.35 * meanOffset + 0.25 * meanRotation + 0.2 * variation + 0.2 * scaleChange));
+  const valid = geometry.visibleSections >= Math.min(3, candidate.settings.rings)
+    && geometry.coverage >= 0.1
+    && geometry.coverage <= 0.72
+    && geometry.edgeShare <= 0.16;
+
+  return scoreDesignCandidate({ palette: palette, balance: balance, negativeSpace: negativeSpace, restraint: restraint, valid: valid });
+}
+
+function chooseHarmoniousCandidate(generateCandidate, evaluateCandidate, attempts, threshold) {
+  const maxAttempts = attempts || 16;
+  const minimumScore = threshold === undefined ? 0.72 : threshold;
+  let best = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const candidate = generateCandidate();
+    const quality = evaluateCandidate(candidate);
+    candidate.quality = quality;
+    if (!quality.valid) continue;
+    if (!best || quality.score > best.quality.score) best = candidate;
+    if (quality.score >= minimumScore) return candidate;
+  }
+  if (best) return best;
+  const fallback = generateCandidate();
+  fallback.quality = evaluateCandidate(fallback);
+  return fallback;
+}
+
+function measureConcentricCandidate(candidate) {
+  const settings = candidate.settings;
+  const outerRadius = 245 * settings.scale / 100;
+  const innerRadius = outerRadius * settings.clearance / 100;
+  const radialSpace = Math.max(1, outerRadius - innerRadius);
+  const gap = Math.min(settings.spacing, radialSpace / (settings.rings * 2));
+  const ringWidth = (radialSpace - gap * (settings.rings - 1)) / settings.rings;
+  const segmentAngle = 360 / settings.segments;
+  const globalAngle = -settings.rotation * Math.PI / 180;
+  const cosGlobal = Math.cos(globalAngle);
+  const sinGlobal = Math.sin(globalAngle);
+  const gridSize = 32;
+  let paintedCount = 0;
+  let sumX = 0;
+  let sumY = 0;
+  let edgeCount = 0;
+  const visibleSections = new Set();
+
+  for (let row = 0; row < gridSize; row += 1) {
+    for (let column = 0; column < gridSize; column += 1) {
+      const screenX = (column + 0.5) * 600 / gridSize;
+      const screenY = (row + 0.5) * 600 / gridSize;
+      const dx = screenX - CENTER;
+      const dy = screenY - CENTER;
+      const artX = CENTER + dx * cosGlobal - dy * sinGlobal;
+      const artY = CENTER + dx * sinGlobal + dy * cosGlobal;
+      let coveredGroups = 0;
+      for (let segment = 0; segment < settings.segments; segment += 1) {
+        if (candidate.emptyGroups.has(segment)) continue;
+        const offset = candidate.groupOffsets.get(segment) || { x: 0, y: 0 };
+        const localX = artX - offset.x - CENTER;
+        const localY = artY - offset.y - CENTER;
+        const radius = Math.hypot(localX, localY);
+        const ring = Math.floor((outerRadius - radius) / (ringWidth + gap));
+        if (ring < 0 || ring >= settings.rings) continue;
+        const ringOuter = outerRadius - ring * (ringWidth + gap);
+        const ringInner = ringOuter - ringWidth;
+        if (radius > ringOuter || radius < ringInner) continue;
+        const jitter = settings.variation === 0 ? 0 : (seededUnit(ring + 1, candidate.seed) * 2 - 1) * (settings.variation / 100) * segmentAngle * 0.3;
+        const start = 180 + (candidate.groupRotations.get(segment) || 0) + ring * jitter + segment * segmentAngle;
+        const angle = (Math.atan2(localY, localX) * 180 / Math.PI + 360) % 360;
+        const relativeAngle = ((angle - start) % 360 + 360) % 360;
+        if (relativeAngle >= segmentAngle) continue;
+        const key = cellKey(ring, segment);
+        if (candidate.emptyCells.has(key)) continue;
+        coveredGroups += 1;
+        visibleSections.add(key);
+      }
+
+      let painted = settings.excludeOverlaps ? coveredGroups === 1 : coveredGroups > 0;
+      if (settings.dotVisible && settings.dotSize > 0) {
+        const dotX = CENTER + settings.dotX;
+        const dotY = CENTER + settings.dotY;
+        const dotDx = artX - dotX;
+        const dotDy = artY - dotY;
+        const dotRadius = outerRadius * settings.dotSize / 100;
+        if (dotDx * dotDx + dotDy * dotDy <= dotRadius * dotRadius) painted = true;
+      }
+      if (!painted) continue;
+      paintedCount += 1;
+      sumX += screenX;
+      sumY += screenY;
+      if (row === 0 || column === 0 || row === gridSize - 1 || column === gridSize - 1) edgeCount += 1;
     }
   }
 
-  controls.dotColor.dataset.color = randomChoice(BRAND_100_COLOURS);
-  compositionSeed = randomInteger(1, 1000000000);
+  const totalSamples = gridSize * gridSize;
+  const centroidX = paintedCount ? sumX / paintedCount : CENTER;
+  const centroidY = paintedCount ? sumY / paintedCount : CENTER;
+  return {
+    coverage: paintedCount / totalSamples,
+    centroidOffset: Math.hypot(centroidX - CENTER, centroidY - CENTER) / 300,
+    edgeShare: paintedCount ? edgeCount / paintedCount : 1,
+    visibleSections: visibleSections.size,
+    valid: visibleSections.size >= Math.min(3, settings.rings)
+      && paintedCount / totalSamples >= 0.1
+      && paintedCount / totalSamples <= 0.72
+      && (paintedCount ? edgeCount / paintedCount : 1) <= 0.16
+  };
+}
+
+function evaluateConcentricCandidate(candidate) {
+  const geometry = measureConcentricCandidate(candidate);
+  return scoreConcentricCandidate(candidate, geometry);
+}
+
+function applySurpriseCandidate(candidate) {
+  const settings = candidate.settings;
+  controls.rings.value = String(settings.rings);
+  controls.segments.value = String(settings.segments);
+  controls.spacing.value = String(settings.spacing);
+  controls.clearance.value = String(settings.clearance);
+  controls.variation.value = String(settings.variation);
+  controls.scale.value = String(settings.scale);
+  controls.rotation.value = String(settings.rotation);
+  controls.dotSize.value = String(settings.dotSize);
+  controls.dotVisible.checked = settings.dotVisible;
+  controls.dotX.value = String(settings.dotX);
+  controls.dotY.value = String(settings.dotY);
+  controls.background.checked = settings.background;
+  controls.excludeOverlaps.checked = settings.excludeOverlaps;
+  controls.dotColor.dataset.color = settings.dotColor;
+
+  groupColours.splice(0, groupColours.length, ...candidate.colours);
+  cellColors.clear();
+  candidate.cellColours.forEach(function (colour, key) { cellColors.set(key, colour); });
+  emptyCells.clear();
+  candidate.emptyCells.forEach(function (key) { emptyCells.add(key); });
+  emptyGroups.clear();
+  candidate.emptyGroups.forEach(function (group) { emptyGroups.add(group); });
+  segmentOffsets.clear();
+  candidate.groupOffsets.forEach(function (offset, group) { segmentOffsets.set(group, offset); });
+  segmentRotations.clear();
+  candidate.groupRotations.forEach(function (rotation, group) { segmentRotations.set(group, rotation); });
+  compositionSeed = candidate.seed;
   selectedCell = { ring: 0, segment: 0 };
   activeGroup = 0;
   render();
+}
+
+function generateSurprise() {
+  closePalette(false);
+  pendingGroupIndex = null;
+  groupInspector.classList.remove("is-fading-out");
+  const candidate = chooseHarmoniousCandidate(createSurpriseCandidate, evaluateConcentricCandidate, 16, 0.72);
+  applySurpriseCandidate(candidate);
+  const settings = candidate.settings;
   document.querySelector("#surprise-status").textContent =
-    "New composition generated with " + rings + (rings === 1 ? " ring and " : " rings and ") + segments + (segments === 1 ? " group." : " groups.");
+    "New composition generated with " + settings.rings + " rings and " + settings.segments + " groups. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100.";
 }
 
 Object.values(controls).forEach(function (control) {
