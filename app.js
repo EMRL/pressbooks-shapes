@@ -118,6 +118,7 @@ function renderGroupSwatches(count) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "group-select";
+      button.setAttribute("aria-label", "Select group " + (index + 1));
       button.setAttribute("aria-pressed", String(activeGroup === index));
       const number = document.createElement("span");
       number.textContent = String(index + 1);
