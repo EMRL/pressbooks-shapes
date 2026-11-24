@@ -46,6 +46,9 @@ const stage = document.querySelector("#preview-stage");
 const segmentGrid = document.querySelector("#segment-grid");
 const groupSwatches = document.querySelector("#group-swatches");
 const groupInspector = document.querySelector(".group-inspector");
+const presetMenu = document.querySelector("#preset-menu");
+const presetFileInput = document.querySelector("#preset-file-input");
+const presetNotice = document.querySelector("#preset-notice");
 const groupPaletteButtons = [];
 const palettePopover = document.querySelector("#palette-popover");
 const paletteGrid = document.querySelector("#palette-grid");
@@ -762,6 +765,129 @@ function exportPresetSettings() {
   window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
 }
 
+function isIntegerBetween(value, minimum, maximum) {
+  return Number.isInteger(value) && value >= minimum && value <= maximum;
+}
+
+function isBrandColour(value) {
+  return typeof value === "string" && ALL_PALETTE_COLOURS.includes(value.toUpperCase());
+}
+
+function validatePresetPayload(payload) {
+  if (!payload || payload.format !== "pressbooks-shapes-preset" || payload.version !== 1 || payload.designType !== "concentric") {
+    throw new Error("Choose a version 1 Pressbooks Shapes concentric preset JSON file.");
+  }
+
+  const settings = payload.settings;
+  const dot = settings && settings.centreDot;
+  const settingsValid = settings
+    && isIntegerBetween(settings.rings, 1, 8)
+    && isIntegerBetween(settings.groups, 1, 8)
+    && isIntegerBetween(settings.ringSpacingPx, 0, 24)
+    && isIntegerBetween(settings.innerClearancePercent, 15, 60)
+    && isIntegerBetween(settings.variationPercent, 0, 100)
+    && isIntegerBetween(settings.scalePercent, 70, 150)
+    && isIntegerBetween(settings.rotationDegrees, 0, 359)
+    && typeof settings.background === "boolean"
+    && typeof settings.excludeOverlaps === "boolean"
+    && dot
+    && typeof dot.visible === "boolean"
+    && isIntegerBetween(dot.sizePercent, 0, 30)
+    && isBrandColour(dot.colour)
+    && isIntegerBetween(dot.horizontalPosition, -250, 250)
+    && isIntegerBetween(dot.verticalPosition, -250, 250);
+  if (!settingsValid || !isIntegerBetween(payload.randomSeed, 1, 1000000000)
+    || !Array.isArray(payload.groups) || payload.groups.length !== settings.groups) {
+    throw new Error("This preset has unsupported settings or Pressbooks colours.");
+  }
+
+  const groupsValid = payload.groups.every(function (group, index) {
+    return group
+      && group.index === index + 1
+      && isBrandColour(group.colour)
+      && typeof group.empty === "boolean"
+      && isIntegerBetween(group.horizontalOffset, -100, 100)
+      && isIntegerBetween(group.verticalOffset, -100, 100)
+      && isIntegerBetween(group.rotationDegrees, -180, 180)
+      && Array.isArray(group.sections)
+      && group.sections.length === settings.rings
+      && group.sections.every(function (section, ring) {
+        return section
+          && section.ring === ring + 1
+          && typeof section.empty === "boolean"
+          && (section.colour === null || isBrandColour(section.colour));
+      });
+  });
+  if (!groupsValid) throw new Error("This preset has unsupported group or section data.");
+  return payload;
+}
+
+function applyPresetPayload(payload) {
+  const settings = payload.settings;
+  controls.rings.value = String(settings.rings);
+  controls.segments.value = String(settings.groups);
+  controls.spacing.value = String(settings.ringSpacingPx);
+  controls.clearance.value = String(settings.innerClearancePercent);
+  controls.variation.value = String(settings.variationPercent);
+  controls.scale.value = String(settings.scalePercent);
+  controls.rotation.value = String(settings.rotationDegrees);
+  controls.dotVisible.checked = settings.centreDot.visible;
+  controls.dotSize.value = String(settings.centreDot.sizePercent);
+  controls.dotColor.dataset.color = settings.centreDot.colour.toUpperCase();
+  controls.dotX.value = String(settings.centreDot.horizontalPosition);
+  controls.dotY.value = String(settings.centreDot.verticalPosition);
+  controls.background.checked = settings.background;
+  controls.excludeOverlaps.checked = settings.excludeOverlaps;
+
+  groupColours.splice(0, groupColours.length, ...payload.groups.map(function (group) { return group.colour.toUpperCase(); }));
+  cellColors.clear();
+  emptyCells.clear();
+  emptyGroups.clear();
+  segmentOffsets.clear();
+  segmentRotations.clear();
+  payload.groups.forEach(function (group, segment) {
+    if (group.empty) emptyGroups.add(segment);
+    if (group.horizontalOffset || group.verticalOffset) {
+      segmentOffsets.set(segment, { x: group.horizontalOffset, y: group.verticalOffset });
+    }
+    if (group.rotationDegrees) segmentRotations.set(segment, group.rotationDegrees);
+    group.sections.forEach(function (section, ring) {
+      const key = cellKey(ring, segment);
+      if (section.empty) emptyCells.add(key);
+      if (section.colour !== null) cellColors.set(key, section.colour.toUpperCase());
+    });
+  });
+
+  compositionSeed = payload.randomSeed;
+  selectedCell = { ring: 0, segment: 0 };
+  activeGroup = 0;
+  pendingGroupIndex = null;
+  groupInspector.classList.remove("is-fading-out");
+  closePalette(false);
+  render();
+}
+
+let presetNoticeTimer;
+function showPresetNotice(message, isError) {
+  window.clearTimeout(presetNoticeTimer);
+  presetNotice.textContent = message;
+  presetNotice.classList.toggle("is-error", Boolean(isError));
+  presetNotice.hidden = false;
+  presetNoticeTimer = window.setTimeout(function () { presetNotice.hidden = true; }, 5000);
+}
+
+async function importPresetFile(file) {
+  try {
+    const payload = validatePresetPayload(JSON.parse(await file.text()));
+    applyPresetPayload(payload);
+    showPresetNotice("Preset imported. The current composition has been replaced.", false);
+  } catch (error) {
+    showPresetNotice(error instanceof SyntaxError ? "This file is not valid JSON." : error.message, true);
+  }
+  presetFileInput.value = "";
+  document.querySelector("#preset-menu-toggle").focus();
+}
+
 function createSurpriseCandidate() {
   const rings = randomInteger(3, 8);
   const segments = randomInteger(2, 8);
@@ -1062,7 +1188,27 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
-document.querySelector("#export-settings").addEventListener("click", exportPresetSettings);
+document.querySelector("#export-settings").addEventListener("click", function () {
+  presetMenu.open = false;
+  exportPresetSettings();
+});
+document.querySelector("#import-preset").addEventListener("click", function () {
+  presetMenu.open = false;
+  presetFileInput.click();
+});
+presetFileInput.addEventListener("change", function () {
+  const file = presetFileInput.files && presetFileInput.files[0];
+  if (file) importPresetFile(file);
+});
+document.addEventListener("click", function (event) {
+  if (!presetMenu.contains(event.target)) presetMenu.open = false;
+});
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape" && presetMenu.open) {
+    presetMenu.open = false;
+    document.querySelector("#preset-menu-toggle").focus();
+  }
+});
 const surpriseButton = document.querySelector("#surprise-me");
 let surpriseAnimationTimer;
 surpriseButton.addEventListener("click", function () {

@@ -21,10 +21,21 @@
           <img class="brand-mark" src="assets/pressbooks-brandmark.svg" alt="">
           <span class="brand-name"><strong>Pressbooks</strong> Shapes</span>
         </a>
-        <div class="topbar-actions"><button class="export-button topbar-export" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download<span class="file-tag">.SVG</span></button><button class="export-button topbar-export settings-export" id="export-settings" type="button" aria-label="Export settings as JSON"><i class="ph-light ph-export" aria-hidden="true"></i>Export settings<span class="file-tag">.JSON</span></button></div>
+        <div class="topbar-actions">
+          <details class="preset-menu" id="preset-menu">
+            <summary class="preset-menu-trigger" id="preset-menu-toggle" aria-label="Presets"><i class="ph-light ph-bookmark-simple preset-icon" aria-hidden="true"></i><span>Presets</span><i class="ph-light ph-caret-down preset-chevron" aria-hidden="true"></i></summary>
+            <div class="preset-menu-panel">
+              <button id="import-preset" type="button">Import preset…</button>
+              <button id="export-settings" type="button">Export current preset</button>
+            </div>
+          </details>
+          <input id="preset-file-input" type="file" accept=".json,application/json" hidden>
+          <button class="export-button topbar-export" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download<span class="file-tag">.SVG</span></button>
+        </div>
       </div>
     </header>
     <span id="surprise-status" class="sr-only" role="status" aria-live="polite"></span>
+    <div class="preset-notice" id="preset-notice" role="status" aria-live="polite" hidden></div>
     <main id="main" class="layout">
       <section class="intro" aria-labelledby="page-title">
         <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option selected>Concentric composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option><option disabled>Interlocking · coming soon</option></select></h1>
