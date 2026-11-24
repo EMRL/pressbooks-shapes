@@ -76,6 +76,20 @@ let selectedCell = { ring: 0, segment: 0 };
 let activeGroup = 0;
 let paletteTarget = null;
 
+function animateGroupInspector() {
+  const inspector = document.querySelector(".group-inspector");
+  inspector.classList.remove("is-changing");
+  void inspector.offsetWidth;
+  inspector.classList.add("is-changing");
+}
+
+function selectGroup(index) {
+  const changed = activeGroup !== index;
+  activeGroup = index;
+  render();
+  if (changed) animateGroupInspector();
+}
+
 function paletteLabel(hex) {
   for (const family of BRAND_PALETTE) {
     const value = family.values.find(function (entry) { return entry[1].toUpperCase() === hex.toUpperCase(); });
@@ -121,8 +135,7 @@ function renderGroupSwatches(count) {
       button.setAttribute("aria-label", "Select group " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
       button.setAttribute("aria-pressed", String(activeGroup === index));
       button.addEventListener("click", function () {
-        activeGroup = index;
-        render();
+        selectGroup(index);
       });
       const paletteButton = document.createElement("button");
       paletteButton.type = "button";
@@ -133,23 +146,12 @@ function renderGroupSwatches(count) {
       paletteButton.setAttribute("aria-controls", "palette-popover");
       paletteButton.innerHTML = '<i class="ph-light ph-palette" aria-hidden="true"></i>';
       paletteButton.addEventListener("click", function () {
-        activeGroup = index;
-        render();
+        selectGroup(index);
         openPalette(groupPaletteButtons[index], "group", index);
-      });
-      const moveButton = document.createElement("button");
-      moveButton.type = "button";
-      moveButton.className = "group-action group-move-action";
-      moveButton.setAttribute("aria-label", "Edit the position of group " + (index + 1));
-      moveButton.innerHTML = '<i class="ph-light ph-arrows-out-cardinal" aria-hidden="true"></i>';
-      moveButton.addEventListener("click", function () {
-        activeGroup = index;
-        render();
-        document.querySelector("#segment-x").focus();
       });
       controls.colors.push(button);
       groupPaletteButtons.push(paletteButton);
-      card.append(button, paletteButton, moveButton);
+      card.append(button, paletteButton);
       groupSwatches.append(card);
     }
   }
