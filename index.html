@@ -57,7 +57,12 @@
           <div class="preview-foot"><span id="shape-count">5 rings</span><span id="variation-readout">0% variation</span></div>
         </section>
         <aside class="controls-panel" aria-label="Composition controls">
-          <div class="controls-head"><h2>Design controls</h2><button class="surprise-button" id="surprise-me" type="button" aria-label="Surprise me"><span class="surprise-icon"><i class="ph-light ph-dice-five" aria-hidden="true"></i></span><span class="surprise-label">Surprise me</span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span></button></div>
+          <div class="editor-tabs" role="tablist" aria-label="Control panels">
+            <button id="design-controls-tab" class="editor-tab" type="button" role="tab" aria-selected="true" aria-controls="design-controls-panel" tabindex="0">Design controls</button>
+            <button id="group-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="group-editor-panel" tabindex="-1">Group editor</button>
+          </div>
+          <section id="design-controls-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="design-controls-tab">
+          <div class="controls-head"><button class="surprise-button" id="surprise-me" type="button" aria-label="Surprise me"><span class="surprise-icon"><i class="ph-light ph-dice-five" aria-hidden="true"></i></span><span class="surprise-label">Surprise me</span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span></button></div>
           <h3 class="control-section-title">Composition</h3>
           <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">5 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="5" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
           <div class="control-group"><div class="control-label"><label for="segments">Groups</label><output id="segments-output" for="segments">4 groups</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
@@ -82,41 +87,41 @@
                 <div class="control-group"><div class="control-label"><label for="dot-y">Centre dot vertical position</label><output id="dot-y-output" for="dot-y">0 units</output></div><input id="dot-y" name="dot-y" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Up</span><span>Down</span></div></div>
               </div>
             </div>
-          </details>        </aside>
-      </div>
-      <section class="groups-panel" aria-label="Group and section controls">
-        <div class="groups-head">
-          <div><h2>Group editor</h2><p>Select a group or ring section to adjust its colour, position, or visibility.</p></div>
-        </div>
-        <div class="groups-editor">
-          <fieldset class="segment-editor">
-            <legend class="segment-editor-legend">Individual sections <output id="selected-cell-label">Ring 1 · Group 1</output></legend>
-            <p class="segment-editor-help">Choose a ring and group. Each section can use its own colour or be left empty.</p>
-            <div id="segment-grid" class="segment-grid" aria-label="Ring and object group colour grid"></div>
-          </fieldset>
-          <div class="group-column">
-            <fieldset class="palette-control">
-              <legend>Default group colours</legend>
-              <div class="palette-swatches" id="group-swatches"></div>
-            </fieldset>
-            <div class="group-inspector">
-            <div class="segment-position">
-              <div class="control-label"><strong id="position-title">Group 1</strong><button class="reset-position-button" id="reset-group-position" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div>
-              <p class="segment-editor-help">Move or rotate every ring section in the active group.</p>
-              <label class="position-axis" for="segment-x"><span>Horizontal</span><output id="segment-x-output" for="segment-x">0 units</output></label>
-              <input id="segment-x" name="segment-x" type="range" min="-100" max="100" value="0" step="1">
-              <div class="range-ends"><span>Left</span><span>Right</span></div>
-              <label class="position-axis" for="segment-y"><span>Vertical</span><output id="segment-y-output" for="segment-y">0 units</output></label>
-              <input id="segment-y" name="segment-y" type="range" min="-100" max="100" value="0" step="1">
-              <div class="range-ends"><span>Up</span><span>Down</span></div>
-              <label class="position-axis" for="group-rotation"><span>Group rotation</span><output id="group-rotation-output" for="group-rotation">0°</output></label>
-              <input id="group-rotation" name="group-rotation" type="range" min="-180" max="180" value="0" step="1">
-              <div class="range-ends"><span>Counter-clockwise</span><span>Clockwise</span></div>
+          </details>
+          </section>
+          <section id="group-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="group-editor-tab" hidden>
+            <p class="group-panel-help">Select a group or ring section to adjust its colour, position, or visibility.</p>
+            <div class="groups-editor">
+              <fieldset class="segment-editor">
+                <legend class="segment-editor-legend">Individual sections <output id="selected-cell-label">Ring 1 · Group 1</output></legend>
+                <p class="segment-editor-help">Choose a ring and group. Each section can use its own colour or be left empty.</p>
+                <div id="segment-grid" class="segment-grid" aria-label="Ring and object group colour grid"></div>
+              </fieldset>
+              <div class="group-column">
+                <fieldset class="palette-control">
+                  <legend>Default group colours</legend>
+                  <div class="palette-swatches" id="group-swatches"></div>
+                </fieldset>
+                <div class="group-inspector">
+                  <div class="segment-position">
+                    <div class="control-label"><strong id="position-title">Group 1</strong><button class="reset-position-button" id="reset-group-position" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div>
+                    <p class="segment-editor-help">Move or rotate every ring section in the active group.</p>
+                    <label class="position-axis" for="segment-x"><span>Horizontal</span><output id="segment-x-output" for="segment-x">0 units</output></label>
+                    <input id="segment-x" name="segment-x" type="range" min="-100" max="100" value="0" step="1">
+                    <div class="range-ends"><span>Left</span><span>Right</span></div>
+                    <label class="position-axis" for="segment-y"><span>Vertical</span><output id="segment-y-output" for="segment-y">0 units</output></label>
+                    <input id="segment-y" name="segment-y" type="range" min="-100" max="100" value="0" step="1">
+                    <div class="range-ends"><span>Up</span><span>Down</span></div>
+                    <label class="position-axis" for="group-rotation"><span>Group rotation</span><output id="group-rotation-output" for="group-rotation">0°</output></label>
+                    <input id="group-rotation" name="group-rotation" type="range" min="-180" max="180" value="0" step="1">
+                    <div class="range-ends"><span>Counter-clockwise</span><span>Clockwise</span></div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        </aside>
+      </div>
       <footer class="page-footer"><span>Pressbooks Shapes</span><span>Concentric composition · SVG export</span></footer>
     </main>
     <div id="palette-popover" class="palette-popover" role="dialog" aria-label="Choose a colour" hidden>
