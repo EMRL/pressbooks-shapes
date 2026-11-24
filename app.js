@@ -45,6 +45,7 @@ const art = document.querySelector("#shape-art");
 const stage = document.querySelector("#preview-stage");
 const segmentGrid = document.querySelector("#segment-grid");
 const groupSwatches = document.querySelector("#group-swatches");
+const groupInspector = document.querySelector(".group-inspector");
 const groupPaletteButtons = [];
 const palettePopover = document.querySelector("#palette-popover");
 const paletteGrid = document.querySelector("#palette-grid");
@@ -75,19 +76,19 @@ const rangeNumbers = new Map();
 let selectedCell = { ring: 0, segment: 0 };
 let activeGroup = 0;
 let paletteTarget = null;
-
-function animateGroupInspector() {
-  const inspector = document.querySelector(".group-inspector");
-  inspector.classList.remove("is-changing");
-  void inspector.offsetWidth;
-  inspector.classList.add("is-changing");
-}
+let pendingGroupIndex = null;
 
 function selectGroup(index) {
-  const changed = activeGroup !== index;
-  activeGroup = index;
-  render();
-  if (changed) animateGroupInspector();
+  if (pendingGroupIndex === null && activeGroup === index) return;
+  pendingGroupIndex = index;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    activeGroup = index;
+    pendingGroupIndex = null;
+    groupInspector.classList.remove("is-fading-out");
+    render();
+    return;
+  }
+  groupInspector.classList.add("is-fading-out");
 }
 
 function paletteLabel(hex) {
@@ -744,5 +745,12 @@ cellEditor.reset.addEventListener("click", function () {
   render();
   closePalette(false);
   (target.type === "group" ? controls.colors[target.index] : segmentGrid.querySelector('.segment-cell[aria-pressed="true"]'))?.focus();
+});
+groupInspector.addEventListener("transitionend", function (event) {
+  if (event.target !== groupInspector || event.propertyName !== "opacity" || pendingGroupIndex === null) return;
+  activeGroup = pendingGroupIndex;
+  pendingGroupIndex = null;
+  render();
+  groupInspector.classList.remove("is-fading-out");
 });
 render();

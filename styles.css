@@ -128,9 +128,8 @@ input[type="range"]:focus-visible { outline: 2px solid var(--pathways-120); outl
 .segment-cell.is-empty { background-color: var(--surface); background-image: linear-gradient(45deg,var(--light-20) 25%,transparent 25%),linear-gradient(-45deg,var(--light-20) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--light-20) 75%),linear-gradient(-45deg,transparent 75%,var(--light-20) 75%); background-size: 8px 8px; background-position: 0 0,0 4px,4px -4px,-4px 0; }
 .segment-cell.is-selected { outline: 2px solid var(--dark-100); outline-offset: 1px; }
 .segment-cell:focus-visible, .reset-cell-button:focus-visible { outline: 2px solid var(--pathways-120); outline-offset: 2px; }
-.group-inspector { display: block; width: 100%; align-items: start; }
-.group-inspector.is-changing { animation: group-controls-refresh .42s ease-in-out; }
-@keyframes group-controls-refresh { 0%, 100% { opacity: 1; } 45% { opacity: 0; } }
+.group-inspector { display: block; width: 100%; align-items: start; opacity: 1; transition: opacity .21s ease-in-out; }
+.group-inspector.is-fading-out { opacity: 0; }
 .cell-editor { display: none; }
 .cell-color-control, .empty-control { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid var(--light-60); border-radius: 4px; padding: 6px 8px; color: var(--dark-100); font-size: 10px; }
 .cell-color-control { background: transparent; }
