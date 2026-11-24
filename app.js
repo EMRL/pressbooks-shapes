@@ -118,11 +118,8 @@ function renderGroupSwatches(count) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "group-select";
-      button.setAttribute("aria-label", "Select group " + (index + 1));
+      button.setAttribute("aria-label", "Select group " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
       button.setAttribute("aria-pressed", String(activeGroup === index));
-      const number = document.createElement("span");
-      number.textContent = String(index + 1);
-      button.append(number);
       button.addEventListener("click", function () {
         activeGroup = index;
         render();
@@ -143,7 +140,7 @@ function renderGroupSwatches(count) {
       const moveButton = document.createElement("button");
       moveButton.type = "button";
       moveButton.className = "group-action group-move-action";
-      moveButton.setAttribute("aria-label", "Select group " + (index + 1) + " and edit its position");
+      moveButton.setAttribute("aria-label", "Edit the position of group " + (index + 1));
       moveButton.innerHTML = '<i class="ph-light ph-arrows-out-cardinal" aria-hidden="true"></i>';
       moveButton.addEventListener("click", function () {
         activeGroup = index;
@@ -158,10 +155,12 @@ function renderGroupSwatches(count) {
   }
   controls.colors.forEach(function (button, index) {
     updateColourTrigger(button, groupColours[index], "Group " + (index + 1) + " default colour");
+    button.setAttribute("aria-label", "Select group " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
     button.setAttribute("aria-pressed", String(activeGroup === index));
     button.parentElement.style.setProperty("--swatch", groupColours[index]);
-    button.parentElement.style.setProperty("--group-icon-color", groupIconColour(groupColours[index]));
+    button.parentElement.style.setProperty("--group-icon-color", emptyGroups.has(index) ? "var(--dark-100)" : groupIconColour(groupColours[index]));
     button.parentElement.classList.toggle("is-active", activeGroup === index);
+    button.parentElement.classList.toggle("is-empty", emptyGroups.has(index));
   });
 }
 
