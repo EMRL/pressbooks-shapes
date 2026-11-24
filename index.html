@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/light/style.css">
     <link rel="stylesheet" href="styles.css">
     <script src="app.js" defer></script>
   </head>
@@ -22,7 +23,7 @@
     </header>
     <main id="main" class="layout">
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option selected>Concentric composition</option><option disabled>Radial form · coming soon</option></select></h1>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option selected>Concentric composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option><option disabled>Interlocking · coming soon</option></select></h1>
         <p>Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
@@ -71,10 +72,6 @@
       <section class="groups-panel" aria-label="Group and section controls">
         <div class="groups-head">
           <div><h2>Group editor</h2><p>Select a group or ring section to adjust its colour, position, or visibility.</p></div>
-          <fieldset class="palette-control">
-            <legend>Default group colours</legend>
-            <div class="palette-swatches" id="group-swatches"></div>
-          </fieldset>
         </div>
         <div class="groups-editor">
           <fieldset class="segment-editor">
@@ -82,7 +79,12 @@
             <p class="segment-editor-help">Choose a ring and group. Each section can use its own colour or be left empty.</p>
             <div id="segment-grid" class="segment-grid" aria-label="Ring and object group colour grid"></div>
           </fieldset>
-          <div class="group-inspector">
+          <div class="group-column">
+            <fieldset class="palette-control">
+              <legend>Default group colours</legend>
+              <div class="palette-swatches" id="group-swatches"></div>
+            </fieldset>
+            <div class="group-inspector">
             <div class="segment-position">
               <div class="control-label"><strong id="position-title">Group 1</strong></div>
               <p class="segment-editor-help">Move or rotate every ring section in the active group.</p>
@@ -96,6 +98,7 @@
               <input id="group-rotation" name="group-rotation" type="range" min="-180" max="180" value="0" step="1">
               <div class="range-ends"><span>Counter-clockwise</span><span>Clockwise</span></div>
             </div>
+          </div>
           </div>
         </div>
       </section>
