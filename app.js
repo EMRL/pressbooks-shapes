@@ -45,6 +45,7 @@ const art = document.querySelector("#shape-art");
 const stage = document.querySelector("#preview-stage");
 const segmentGrid = document.querySelector("#segment-grid");
 const groupSwatches = document.querySelector("#group-swatches");
+const groupPaletteButtons = [];
 const palettePopover = document.querySelector("#palette-popover");
 const paletteGrid = document.querySelector("#palette-grid");
 const sectionPaletteActions = document.querySelector("#section-palette-actions");
@@ -91,6 +92,15 @@ function updateColourTrigger(button, hex, label) {
   button.setAttribute("aria-label", label + ": " + paletteLabel(hex));
 }
 
+function groupIconColour(hex) {
+  const rgb = hex.match(/[a-f\d]{2}/gi).map(function (part) {
+    const value = parseInt(part, 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+  });
+  const luminance = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  return luminance > 0.42 ? "var(--dark-100)" : "var(--surface)";
+}
+
 updateColourTrigger(controls.dotColor, "#a7a8a9", "Centre dot colour");
 
 function renderGroupSwatches(count) {
@@ -100,29 +110,58 @@ function renderGroupSwatches(count) {
   if (controls.colors.length !== count) {
     groupSwatches.replaceChildren();
     controls.colors = [];
+    groupPaletteButtons.length = 0;
     groupSwatches.style.setProperty("--group-count", String(count));
     for (let index = 0; index < count; index += 1) {
+      const card = document.createElement("div");
+      card.className = "group-card";
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "palette-swatch";
-      button.dataset.segmentColor = "";
-      button.setAttribute("aria-haspopup", "dialog");
-      button.setAttribute("aria-expanded", "false");
-      button.setAttribute("aria-controls", "palette-popover");
+      button.className = "group-select";
+      button.setAttribute("aria-label", "Select group " + (index + 1));
+      button.setAttribute("aria-pressed", String(activeGroup === index));
       const number = document.createElement("span");
       number.textContent = String(index + 1);
       button.append(number);
       button.addEventListener("click", function () {
         activeGroup = index;
         render();
-        openPalette(controls.colors[index], "group", index);
+      });
+      const paletteButton = document.createElement("button");
+      paletteButton.type = "button";
+      paletteButton.className = "group-action group-palette-action";
+      paletteButton.setAttribute("aria-label", "Choose default colour for group " + (index + 1));
+      paletteButton.setAttribute("aria-haspopup", "dialog");
+      paletteButton.setAttribute("aria-expanded", "false");
+      paletteButton.setAttribute("aria-controls", "palette-popover");
+      paletteButton.innerHTML = '<i class="ph-light ph-palette" aria-hidden="true"></i>';
+      paletteButton.addEventListener("click", function () {
+        activeGroup = index;
+        render();
+        openPalette(groupPaletteButtons[index], "group", index);
+      });
+      const moveButton = document.createElement("button");
+      moveButton.type = "button";
+      moveButton.className = "group-action group-move-action";
+      moveButton.setAttribute("aria-label", "Select group " + (index + 1) + " and edit its position");
+      moveButton.innerHTML = '<i class="ph-light ph-arrows-out-cardinal" aria-hidden="true"></i>';
+      moveButton.addEventListener("click", function () {
+        activeGroup = index;
+        render();
+        document.querySelector("#segment-x").focus();
       });
       controls.colors.push(button);
-      groupSwatches.append(button);
+      groupPaletteButtons.push(paletteButton);
+      card.append(button, paletteButton, moveButton);
+      groupSwatches.append(card);
     }
   }
   controls.colors.forEach(function (button, index) {
     updateColourTrigger(button, groupColours[index], "Group " + (index + 1) + " default colour");
+    button.setAttribute("aria-pressed", String(activeGroup === index));
+    button.parentElement.style.setProperty("--swatch", groupColours[index]);
+    button.parentElement.style.setProperty("--group-icon-color", groupIconColour(groupColours[index]));
+    button.parentElement.classList.toggle("is-active", activeGroup === index);
   });
 }
 
@@ -517,17 +556,9 @@ function renderSegmentEditor(settings) {
   corner.textContent = "Ring";
   heading.append(corner);
   for (let segment = 0; segment < settings.segments; segment += 1) {
-    const label = document.createElement("button");
-    label.type = "button";
+    const label = document.createElement("span");
     label.className = "segment-column-label";
     label.textContent = "G" + (segment + 1);
-    label.setAttribute("aria-label", "Edit group " + (segment + 1));
-    label.setAttribute("aria-pressed", String(activeGroup === segment));
-    if (activeGroup === segment) label.classList.add("is-active");
-    label.addEventListener("click", function () {
-      activeGroup = segment;
-      render();
-    });
     heading.append(label);
   }
   segmentGrid.append(heading);
@@ -689,7 +720,7 @@ cellEditor.empty.addEventListener("change", function () {
   render();
   if (paletteTarget) {
     const trigger = paletteTarget.type === "group"
-      ? controls.colors[paletteTarget.index]
+      ? groupPaletteButtons[paletteTarget.index]
       : segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
     if (trigger) {
       paletteTarget.trigger = trigger;
