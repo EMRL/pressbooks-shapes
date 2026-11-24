@@ -120,9 +120,6 @@ function renderGroupSwatches(count) {
       button.className = "group-select";
       button.setAttribute("aria-label", "Select group " + (index + 1));
       button.setAttribute("aria-pressed", String(activeGroup === index));
-      const number = document.createElement("span");
-      number.textContent = String(index + 1);
-      button.append(number);
       button.addEventListener("click", function () {
         activeGroup = index;
         render();
@@ -140,19 +137,9 @@ function renderGroupSwatches(count) {
         render();
         openPalette(groupPaletteButtons[index], "group", index);
       });
-      const moveButton = document.createElement("button");
-      moveButton.type = "button";
-      moveButton.className = "group-action group-move-action";
-      moveButton.setAttribute("aria-label", "Select group " + (index + 1) + " and edit its position");
-      moveButton.innerHTML = '<i class="ph-light ph-arrows-out-cardinal" aria-hidden="true"></i>';
-      moveButton.addEventListener("click", function () {
-        activeGroup = index;
-        render();
-        document.querySelector("#segment-x").focus();
-      });
       controls.colors.push(button);
       groupPaletteButtons.push(paletteButton);
-      card.append(button, paletteButton, moveButton);
+      card.append(button, paletteButton);
       groupSwatches.append(card);
     }
   }
