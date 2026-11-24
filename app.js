@@ -77,6 +77,33 @@ let selectedCell = { ring: 0, segment: 0 };
 let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
+let compositionSeed = 4821;
+
+function randomInteger(min, max, step) {
+  const increment = step || 1;
+  const steps = Math.floor((max - min) / increment);
+  return min + Math.floor(Math.random() * (steps + 1)) * increment;
+}
+
+function randomChoice(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function shuffled(items) {
+  const result = items.slice();
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const other = Math.floor(Math.random() * (index + 1));
+    [result[index], result[other]] = [result[other], result[index]];
+  }
+  return result;
+}
+
+const ALL_PALETTE_COLOURS = BRAND_PALETTE.flatMap(function (family) {
+  return family.values.map(function (entry) { return entry[1].toUpperCase(); });
+});
+const BRAND_100_COLOURS = BRAND_PALETTE.map(function (family) {
+  return family.values.find(function (entry) { return entry[0] === "100"; })[1].toUpperCase();
+});
 
 function selectGroup(index) {
   if (pendingGroupIndex === null && activeGroup === index) return;
@@ -636,7 +663,7 @@ function attachNumericInputs() {
 }
 
 function seededUnit(value) {
-  const x = Math.sin(value * 127.1 + 4821) * 43758.5453;
+  const x = Math.sin(value * 127.1 + compositionSeed) * 43758.5453;
   return x - Math.floor(x);
 }
 
@@ -674,6 +701,76 @@ function downloadSvg() {
   URL.revokeObjectURL(url);
 }
 
+function generateSurprise() {
+  closePalette(false);
+  pendingGroupIndex = null;
+  groupInspector.classList.remove("is-fading-out");
+
+  const rings = randomInteger(3, 8);
+  const segments = randomInteger(2, 8);
+  controls.rings.value = String(rings);
+  controls.segments.value = String(segments);
+  controls.spacing.value = String(randomInteger(2, 18));
+  controls.clearance.value = String(randomInteger(22, 48));
+  controls.variation.value = String(Math.random() < 0.24 ? 0 : randomInteger(4, 30));
+  controls.scale.value = String(randomInteger(85, 120));
+  controls.rotation.value = String(randomInteger(0, 359));
+  controls.dotSize.value = String(Math.random() < 0.2 ? 0 : randomInteger(6, 24));
+  controls.dotVisible.checked = Math.random() < 0.78;
+  controls.dotX.value = String(randomInteger(-30, 30, 5));
+  controls.dotY.value = String(randomInteger(-30, 30, 5));
+  controls.background.checked = Math.random() < 0.28;
+  controls.excludeOverlaps.checked = segments > 1 && Math.random() < 0.22;
+
+  const familyCount = randomInteger(2, Math.min(4, segments));
+  const colourFamilies = shuffled(BRAND_PALETTE).slice(0, familyCount);
+  groupColours.length = 0;
+  for (let segment = 0; segment < segments; segment += 1) {
+    const family = colourFamilies[segment % colourFamilies.length];
+    const tone = Math.random() < 0.78 ? "100" : randomChoice(["80", "120"]);
+    groupColours.push(family.values.find(function (entry) { return entry[0] === tone; })[1].toUpperCase());
+  }
+
+  cellColors.clear();
+  emptyCells.clear();
+  emptyGroups.clear();
+  segmentOffsets.clear();
+  segmentRotations.clear();
+  for (let segment = 1; segment < segments; segment += 1) {
+    if (Math.random() < 0.12) emptyGroups.add(segment);
+  }
+  const nonemptyGroups = Array.from({ length: segments }, function (_, index) { return index; })
+    .filter(function (segment) { return !emptyGroups.has(segment); });
+  for (let ring = 0; ring < rings; ring += 1) {
+    for (const segment of nonemptyGroups) {
+      const key = cellKey(ring, segment);
+      const roll = Math.random();
+      if (roll < 0.055) emptyCells.add(key);
+      else if (roll < 0.13) cellColors.set(key, randomChoice(ALL_PALETTE_COLOURS));
+    }
+  }
+  emptyCells.delete(cellKey(0, 0));
+
+  for (let segment = 0; segment < segments; segment += 1) {
+    if (Math.random() < 0.62) {
+      const offset = { x: randomInteger(-28, 28, 4), y: randomInteger(-28, 28, 4) };
+      if (offset.x || offset.y) segmentOffsets.set(segment, offset);
+    }
+    if (Math.random() < 0.58) {
+      const rotation = randomInteger(-35, 35, 5);
+      if (rotation) segmentRotations.set(segment, rotation);
+    }
+  }
+
+  controls.dotColor.dataset.color = randomChoice(BRAND_100_COLOURS);
+  compositionSeed = randomInteger(1, 1000000000);
+  selectedCell = { ring: 0, segment: 0 };
+  activeGroup = 0;
+  render();
+  document.querySelector("#surprise-status").textContent =
+    "New composition generated with " + rings + (rings === 1 ? " ring and " : " rings and ") + segments + (segments === 1 ? " group." : " groups.");
+}
+
 Object.values(controls).forEach(function (control) {
   if (Array.isArray(control)) {
     control.forEach(function (input) {
@@ -691,6 +788,7 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
+document.querySelector("#surprise-me").addEventListener("click", generateSurprise);
 controls.dotColor.addEventListener("click", function () { openPalette(controls.dotColor, "dot"); });
 function updateSegmentRotation(value) {
   segmentRotations.set(activeGroup, Number(value));
