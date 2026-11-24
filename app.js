@@ -1002,7 +1002,18 @@ Object.values(controls).forEach(function (control) {
   }
 });
 document.querySelector("#download-svg").addEventListener("click", downloadSvg);
-document.querySelector("#surprise-me").addEventListener("click", generateSurprise);
+const surpriseButton = document.querySelector("#surprise-me");
+let surpriseAnimationTimer;
+surpriseButton.addEventListener("click", function () {
+  window.clearTimeout(surpriseAnimationTimer);
+  surpriseButton.classList.remove("is-bursting");
+  void surpriseButton.offsetWidth;
+  surpriseButton.classList.add("is-bursting");
+  surpriseAnimationTimer = window.setTimeout(function () {
+    surpriseButton.classList.remove("is-bursting");
+  }, 900);
+  generateSurprise();
+});
 controls.dotColor.addEventListener("click", function () { openPalette(controls.dotColor, "dot"); });
 function updateSegmentRotation(value) {
   segmentRotations.set(activeGroup, Number(value));
