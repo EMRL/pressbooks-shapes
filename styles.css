@@ -111,15 +111,13 @@ input[type="range"]:focus-visible { outline: 2px solid var(--pathways-120); outl
 .group-action { position: absolute; z-index: 1; bottom: 2px; width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--group-icon-color); cursor: pointer; }
 .group-action:hover, .group-action:focus-visible { background: rgb(37 40 42 / 18%); }
 .group-palette-action { left: 5px; }
-.group-move-action { right: 5px; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .18s ease, visibility .18s ease; }
-.group-card.is-active .group-move-action { opacity: 1; visibility: visible; pointer-events: auto; }
 .group-action i { font-size: 32px; line-height: 1; }
 .group-select:focus-visible, .group-action:focus-visible { outline: 2px solid var(--dark-100); outline-offset: 2px; }
 .groups-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .segment-editor { min-width: 0; border: 0; padding: 0; margin: 0 0 18px; }
 .segment-editor legend { padding: 0; margin-bottom: 6px; color: var(--dark-100); font-size: 12px; font-weight: 700; }
 .segment-editor-legend { display: flex; align-items: baseline; justify-content: flex-start; gap: 12px; width: 100%; }
-.segment-editor-legend output { color: var(--dark-80); font-size: 10px; font-weight: 700; white-space: nowrap; }
+.segment-editor-legend output { padding: 4px 8px; border-radius: 999px; background: var(--light-20); color: var(--dark-80); font-size: 10px; font-weight: 700; white-space: nowrap; }
 .segment-editor-help { margin: 0 0 10px; color: var(--dark-80); font-size: 10px; line-height: 1.45; }
 .segment-grid { display: grid; gap: 4px; margin-bottom: 12px; }
 .segment-grid-row { display: grid; grid-template-columns: 30px repeat(var(--segment-columns), minmax(20px, 1fr)); gap: 4px; align-items: center; }
@@ -131,6 +129,8 @@ input[type="range"]:focus-visible { outline: 2px solid var(--pathways-120); outl
 .segment-cell.is-selected { outline: 2px solid var(--dark-100); outline-offset: 1px; }
 .segment-cell:focus-visible, .reset-cell-button:focus-visible { outline: 2px solid var(--pathways-120); outline-offset: 2px; }
 .group-inspector { display: block; width: 100%; align-items: start; }
+.group-inspector.is-changing { animation: group-controls-refresh .24s ease-out; }
+@keyframes group-controls-refresh { from { opacity: .4; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 .cell-editor { display: none; }
 .cell-color-control, .empty-control { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid var(--light-60); border-radius: 4px; padding: 6px 8px; color: var(--dark-100); font-size: 10px; }
 .cell-color-control { background: transparent; }
@@ -174,4 +174,4 @@ button:focus-visible, select:focus-visible, input[type="checkbox"]:focus-visible
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 900px) { .workspace { grid-template-columns: minmax(0, 1fr); } .preview-stage { width: min(100%, 620px); } .groups-editor { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 680px) { .topbar { min-height: 60px; padding: 0 14px; } .topbar-actions { gap: 9px; } .topbar-export { width: 38px; min-width: 38px; padding: 0; font-size: 0; } .topbar-export svg { flex: 0 0 17px; } .topbar-export .file-tag, .version-tag { display: none; } .layout { padding: 28px 12px 18px; } .intro { margin-bottom: 20px; } .intro p { max-width: 350px; font-size: 14px; } .preview-panel, .controls-panel, .groups-panel { padding: 15px; } .preview-stage { width: 100%; margin: 13px auto; } .groups-editor { grid-template-columns: 1fr; gap: 18px; } .group-card { height: 60px; } .palette-swatches { gap: 6px; } .page-footer { font-size: 8px; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
