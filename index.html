@@ -19,7 +19,7 @@
         <img class="brand-mark" src="assets/pressbooks-brandmark.svg" alt="">
         <span class="brand-name"><strong>Pressbooks</strong> Shapes</span>
       </a>
-      <div class="topbar-actions"><span class="version-tag">Composition 01</span><button class="surprise-button" id="surprise-me" type="button" aria-label="Surprise me"><i class="ph-light ph-dice-five" aria-hidden="true"></i><span>Surprise me</span></button><button class="export-button topbar-export" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
+      <div class="topbar-actions"><button class="export-button topbar-export" id="download-svg" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>Download SVG<span class="file-tag">.SVG</span></button></div>
     </header>
     <span id="surprise-status" class="sr-only" role="status" aria-live="polite"></span>
     <main id="main" class="layout">
@@ -43,7 +43,7 @@
           <div class="preview-foot"><span id="shape-count">5 rings</span><span id="variation-readout">0% variation</span></div>
         </section>
         <aside class="controls-panel" aria-label="Composition controls">
-          <div class="controls-head"><h2>Design controls</h2></div>
+          <div class="controls-head"><h2>Design controls</h2><button class="surprise-button" id="surprise-me" type="button" aria-label="Surprise me"><span class="surprise-icon"><i class="ph-light ph-dice-five" aria-hidden="true"></i></span><span class="surprise-label">Surprise me</span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span></button></div>
           <h3 class="control-section-title">Composition</h3>
           <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">5 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="5" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
           <div class="control-group"><div class="control-label"><label for="segments">Groups</label><output id="segments-output" for="segments">4 groups</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
