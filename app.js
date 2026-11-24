@@ -58,6 +58,7 @@ const paletteActions = {
   emptyLabel: document.querySelector("#palette-empty-label"),
   reset: document.querySelector("#palette-reset")
 };
+const editorTabs = Array.from(document.querySelectorAll('[role="tab"][aria-controls]'));
 const cellEditor = {
   label: document.querySelector("#selected-cell-label"),
   empty: paletteActions.empty,
@@ -81,6 +82,31 @@ let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
+
+function activateEditorTab(tab, moveFocus) {
+  editorTabs.forEach(function (item) {
+    const selected = item === tab;
+    item.setAttribute("aria-selected", String(selected));
+    item.tabIndex = selected ? 0 : -1;
+    const panel = document.getElementById(item.getAttribute("aria-controls"));
+    panel.hidden = !selected;
+  });
+  if (moveFocus) tab.focus();
+}
+
+editorTabs.forEach(function (tab, index) {
+  tab.addEventListener("click", function () { activateEditorTab(tab, false); });
+  tab.addEventListener("keydown", function (event) {
+    let next = index;
+    if (event.key === "ArrowRight") next = (index + 1) % editorTabs.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + editorTabs.length) % editorTabs.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = editorTabs.length - 1;
+    else return;
+    event.preventDefault();
+    activateEditorTab(editorTabs[next], true);
+  });
+});
 
 function randomInteger(min, max, step) {
   const increment = step || 1;
