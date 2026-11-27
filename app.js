@@ -9,7 +9,11 @@ const BRAND_PALETTE = [
   { name: "Commons Light", values: [["20", "#edeeee"], ["40", "#dcdcdd"], ["60", "#cacbcb"], ["80", "#b9b9ba"], ["100", "#a7a8a9"], ["120", "#868687"]] }
 ];
 const DEFAULT_GROUP_COLOURS = ["#bb2026", "#5da3b2", "#f4af23", "#00a47d"];
+const RADIATING_DEFAULT_COLOURS = ["#ccede5", "#cacbcb", "#bb2026", "#5da3b2", "#f4af23", "#99dbcb"];
 const groupColours = DEFAULT_GROUP_COLOURS.slice();
+const designTypeSelect = document.querySelector("#design-type");
+const concentricControls = document.querySelector("#concentric-controls");
+const radiatingControls = document.querySelector("#radiating-controls");
 const controls = {
   rings: document.querySelector("#rings"),
   segments: document.querySelector("#segments"),
@@ -19,6 +23,12 @@ const controls = {
   variation: document.querySelector("#variation"),
   scale: document.querySelector("#scale"),
   rotation: document.querySelector("#rotation"),
+  bandCount: document.querySelector("#band-count"),
+  bandSpan: document.querySelector("#band-span"),
+  fanAngle: document.querySelector("#fan-angle"),
+  bandLength: document.querySelector("#band-length"),
+  bandWidth: document.querySelector("#band-width"),
+  baselineY: document.querySelector("#baseline-y"),
   colors: [],
   dotColor: document.querySelector("#dot-color"),
   dotVisible: document.querySelector("#dot-visible"),
@@ -34,11 +44,17 @@ const outputs = {
   clearance: document.querySelector("#clearance-output"),
   dotSize: document.querySelector("#dot-size-output"),
   variation: document.querySelector("#variation-output"),
-  bandWidth: document.querySelector("#band-width-output"),
+  calculatedBandWidth: document.querySelector("#band-width-output"),
   scale: document.querySelector("#scale-output"),
   rotation: document.querySelector("#rotation-output"),
   dotX: document.querySelector("#dot-x-output"),
-  dotY: document.querySelector("#dot-y-output")
+  dotY: document.querySelector("#dot-y-output"),
+  bandCount: document.querySelector("#band-count-output"),
+  bandSpan: document.querySelector("#band-span-output"),
+  fanAngle: document.querySelector("#fan-angle-output"),
+  bandLength: document.querySelector("#band-length-output"),
+  bandWidth: document.querySelector("#band-width-input-output"),
+  baselineY: document.querySelector("#baseline-y-output")
 };
 const preview = document.querySelector("#shape-preview");
 const art = document.querySelector("#shape-art");
@@ -82,6 +98,123 @@ let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
+const designSnapshots = { concentric: null, radiating: null };
+let activeDesignType = designTypeSelect.value;
+
+function defaultColourFor(index, type) {
+  const colours = (type || designTypeSelect.value) === "radiating" ? RADIATING_DEFAULT_COLOURS : DEFAULT_GROUP_COLOURS;
+  return colours[index % colours.length];
+}
+
+function captureDesignState() {
+  const values = {};
+  Object.entries(controls).forEach(function (entry) {
+    const key = entry[0];
+    const control = entry[1];
+    if (key === "colors") return;
+    if (Array.isArray(control)) {
+      values[key] = control.find(function (input) { return input.checked; })?.value;
+    } else if (control.type === "checkbox") {
+      values[key] = control.checked;
+    } else if (control.tagName === "BUTTON") {
+      values[key] = control.dataset.color;
+    } else {
+      values[key] = control.value;
+    }
+  });
+  return {
+    values: values,
+    groupColours: groupColours.slice(),
+    cellColors: new Map(cellColors),
+    emptyCells: new Set(emptyCells),
+    emptyGroups: new Set(emptyGroups),
+    segmentOffsets: new Map(segmentOffsets),
+    segmentRotations: new Map(segmentRotations),
+    selectedCell: { ...selectedCell },
+    activeGroup: activeGroup,
+    compositionSeed: compositionSeed
+  };
+}
+
+function restoreDesignState(snapshot) {
+  Object.entries(snapshot.values).forEach(function (entry) {
+    const key = entry[0];
+    const value = entry[1];
+    const control = controls[key];
+    if (Array.isArray(control)) {
+      control.forEach(function (input) { input.checked = input.value === value; });
+    } else if (control.type === "checkbox") {
+      control.checked = value;
+    } else if (control.tagName === "BUTTON") {
+      control.dataset.color = value;
+    } else {
+      control.value = String(value);
+    }
+  });
+  groupColours.splice(0, groupColours.length, ...snapshot.groupColours);
+  cellColors.clear();
+  snapshot.cellColors.forEach(function (value, key) { cellColors.set(key, value); });
+  emptyCells.clear();
+  snapshot.emptyCells.forEach(function (key) { emptyCells.add(key); });
+  emptyGroups.clear();
+  snapshot.emptyGroups.forEach(function (key) { emptyGroups.add(key); });
+  segmentOffsets.clear();
+  snapshot.segmentOffsets.forEach(function (value, key) { segmentOffsets.set(key, value); });
+  segmentRotations.clear();
+  snapshot.segmentRotations.forEach(function (value, key) { segmentRotations.set(key, value); });
+  selectedCell = { ...snapshot.selectedCell };
+  activeGroup = snapshot.activeGroup;
+  compositionSeed = snapshot.compositionSeed;
+}
+
+function updateDesignChrome() {
+  const radiating = designTypeSelect.value === "radiating";
+  concentricControls.hidden = radiating;
+  radiatingControls.hidden = !radiating;
+  document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = radiating; });
+  const title = radiating ? "Radiating composition" : "Concentric composition";
+  document.title = "Pressbooks Shapes · " + title;
+  document.querySelector('meta[name="description"]').setAttribute("content", radiating
+    ? "Arrange radiating bands and export them as SVG."
+    : "Build precise concentric compositions and export them as SVG.");
+  document.querySelector("#intro-description").textContent = radiating
+    ? "Arrange radiating bands, refine the details, and download your SVG."
+    : "Arrange concentric groups, refine the details, and download your SVG.";
+  document.querySelector("#preview-type-label").textContent = title;
+  document.querySelector("#shape-title").textContent = title + " preview";
+  document.querySelector("#footer-design-label").textContent = title + " · SVG export";
+  segmentGrid.setAttribute("aria-label", radiating ? "Band colour grid" : "Ring and object group colour grid");
+}
+
+function setDesignType(type, saveCurrent, restoreTarget) {
+  if (type === activeDesignType) {
+    designTypeSelect.value = type;
+    updateDesignChrome();
+    return;
+  }
+  const currentType = activeDesignType;
+  if (saveCurrent !== false) designSnapshots[currentType] = captureDesignState();
+  designTypeSelect.value = type;
+  activeDesignType = type;
+  if (restoreTarget !== false && designSnapshots[type]) {
+    restoreDesignState(designSnapshots[type]);
+  } else if (restoreTarget !== false) {
+    groupColours.splice(0, groupColours.length, ...(type === "radiating" ? RADIATING_DEFAULT_COLOURS : DEFAULT_GROUP_COLOURS));
+    cellColors.clear();
+    emptyCells.clear();
+    emptyGroups.clear();
+    segmentOffsets.clear();
+    segmentRotations.clear();
+    compositionSeed = 4821;
+  }
+  selectedCell = { ring: 0, segment: 0 };
+  activeGroup = 0;
+  pendingGroupIndex = null;
+  closePalette(false);
+  groupInspector.classList.remove("is-fading-out");
+  updateDesignChrome();
+  render();
+}
 
 function activateEditorTab(tab, moveFocus) {
   editorTabs.forEach(function (item) {
@@ -175,8 +308,9 @@ function groupIconColour(hex) {
 updateColourTrigger(controls.dotColor, "#a7a8a9", "Centre dot colour");
 
 function renderGroupSwatches(count) {
+  const itemName = designTypeSelect.value === "radiating" ? "band" : "group";
   while (groupColours.length < count) {
-    groupColours.push(DEFAULT_GROUP_COLOURS[groupColours.length % DEFAULT_GROUP_COLOURS.length]);
+    groupColours.push(defaultColourFor(groupColours.length));
   }
   if (controls.colors.length !== count) {
     groupSwatches.replaceChildren();
@@ -189,7 +323,7 @@ function renderGroupSwatches(count) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "group-select";
-      button.setAttribute("aria-label", "Select group " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
+      button.setAttribute("aria-label", "Select " + itemName + " " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
       button.setAttribute("aria-pressed", String(activeGroup === index));
       button.addEventListener("click", function () {
         selectGroup(index);
@@ -197,7 +331,7 @@ function renderGroupSwatches(count) {
       const paletteButton = document.createElement("button");
       paletteButton.type = "button";
       paletteButton.className = "group-action group-palette-action";
-      paletteButton.setAttribute("aria-label", "Choose default colour for group " + (index + 1));
+      paletteButton.setAttribute("aria-label", "Choose default colour for " + itemName + " " + (index + 1));
       paletteButton.setAttribute("aria-haspopup", "dialog");
       paletteButton.setAttribute("aria-expanded", "false");
       paletteButton.setAttribute("aria-controls", "palette-popover");
@@ -213,8 +347,9 @@ function renderGroupSwatches(count) {
     }
   }
   controls.colors.forEach(function (button, index) {
-    updateColourTrigger(button, groupColours[index], "Group " + (index + 1) + " default colour");
-    button.setAttribute("aria-label", "Select group " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
+    updateColourTrigger(button, groupColours[index], itemName[0].toUpperCase() + itemName.slice(1) + " " + (index + 1) + " default colour");
+    button.setAttribute("aria-label", "Select " + itemName + " " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
+    groupPaletteButtons[index].setAttribute("aria-label", "Choose default colour for " + itemName + " " + (index + 1));
     button.setAttribute("aria-pressed", String(activeGroup === index));
     button.parentElement.style.setProperty("--swatch", groupColours[index]);
     button.parentElement.style.setProperty("--group-icon-color", emptyGroups.has(index) ? "var(--dark-100)" : groupIconColour(groupColours[index]));
@@ -298,13 +433,13 @@ function openPalette(trigger, type, index) {
     cellEditor.empty.checked = emptyGroups.has(paletteTarget.segment) || emptyCells.has(key);
     cellEditor.empty.disabled = emptyGroups.has(paletteTarget.segment);
     cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key);
-    paletteActions.emptyLabel.textContent = "Empty section";
+    paletteActions.emptyLabel.textContent = designTypeSelect.value === "radiating" ? "Empty band" : "Empty section";
     paletteActions.reset.textContent = "Use group default";
   } else if (type === "group") {
     cellEditor.empty.checked = emptyGroups.has(index);
     cellEditor.empty.disabled = false;
-    cellEditor.reset.disabled = groupColours[index] === DEFAULT_GROUP_COLOURS[index % DEFAULT_GROUP_COLOURS.length];
-    paletteActions.emptyLabel.textContent = "Empty entire group";
+    cellEditor.reset.disabled = groupColours[index] === defaultColourFor(index);
+    paletteActions.emptyLabel.textContent = designTypeSelect.value === "radiating" ? "Empty band" : "Empty entire group";
     paletteActions.reset.textContent = "Reset colour";
   }
   const selected = targetColour(paletteTarget).toUpperCase();
@@ -433,28 +568,70 @@ function createRingSegment(outerRadius, innerRadius, startAngle, endAngle) {
 }
 
 function readSettings() {
+  const type = designTypeSelect.value;
+  const radiating = type === "radiating";
   return {
-    rings: Number(controls.rings.value),
-    segments: Number(controls.segments.value),
+    type: type,
+    rings: radiating ? 1 : Number(controls.rings.value),
+    segments: radiating ? Number(controls.bandCount.value) : Number(controls.segments.value),
     spacing: Number(controls.spacing.value),
     clearance: Number(controls.clearance.value) / 100,
     dotSize: Number(controls.dotSize.value) / 100,
     variation: Number(controls.variation.value) / 100,
     scale: Number(controls.scale.value) / 100,
     rotation: Number(controls.rotation.value),
-    colors: groupColours.slice(0, Number(controls.segments.value)).map(function (hex) { return hex.toUpperCase(); }),
+    colors: groupColours.slice(0, radiating ? Number(controls.bandCount.value) : Number(controls.segments.value)).map(function (hex) { return hex.toUpperCase(); }),
     dotColor: controls.dotColor.dataset.color.toUpperCase(),
     dotVisible: controls.dotVisible.checked,
     dotX: Number(controls.dotX.value),
     dotY: Number(controls.dotY.value),
     background: controls.background.checked,
-    overlapMode: controls.overlapModes.find(function (input) { return input.checked; }).value
+    overlapMode: controls.overlapModes.find(function (input) { return input.checked; }).value,
+    bandSpan: Number(controls.bandSpan.value),
+    fanAngle: Number(controls.fanAngle.value),
+    bandLength: Number(controls.bandLength.value),
+    bandWidth: Number(controls.bandWidth.value),
+    baselineY: Number(controls.baselineY.value)
   };
 }
 
+function createRadiatingBands(settings) {
+  return Array.from({ length: settings.segments }, function (_, segment) {
+    const position = settings.segments === 1 ? 0.5 : segment / (settings.segments - 1);
+    const variation = settings.variation;
+    const angleJitter = (seededUnit(segment + 11) - 0.5) * variation * 18;
+    const lengthFactor = Math.max(0.35, 0.64 + 0.36 * Math.sin(Math.PI * position) + (seededUnit(segment + 29) - 0.5) * variation * 0.5);
+    const widthFactor = 1 + (seededUnit(segment + 47) - 0.5) * variation * 0.4;
+    const angle = (position - 0.5) * settings.fanAngle + angleJitter + (segmentRotations.get(segment) || 0);
+    const radians = angle * Math.PI / 180;
+    const scale = settings.scale;
+    const anchorX = CENTER + (position - 0.5) * settings.bandSpan * scale;
+    const baseline = CENTER + (settings.baselineY - CENTER) * scale;
+    const length = settings.bandLength * scale * lengthFactor;
+    const width = settings.bandWidth * scale * widthFactor;
+    const alongX = Math.sin(radians) * length;
+    const alongY = -Math.cos(radians) * length;
+    const acrossX = Math.cos(radians) * width / 2;
+    const acrossY = Math.sin(radians) * width / 2;
+    const baseLeft = { x: anchorX - acrossX, y: baseline - acrossY };
+    const baseRight = { x: anchorX + acrossX, y: baseline + acrossY };
+    const topRight = { x: anchorX + alongX + acrossX, y: baseline + alongY + acrossY };
+    const topLeft = { x: anchorX + alongX - acrossX, y: baseline + alongY - acrossY };
+    const key = cellKey(0, segment);
+    if (emptyGroups.has(segment) || emptyCells.has(key)) return null;
+    return {
+      ring: 0,
+      segment: segment,
+      d: ["M " + pointString(baseLeft), "L " + pointString(baseRight), "L " + pointString(topRight), "L " + pointString(topLeft), "Z"].join(" "),
+      fill: cellColor(settings, 0, segment),
+      offset: segmentOffsets.get(segment) || { x: 0, y: 0 }
+    };
+  }).filter(Boolean);
+}
+
 function render() {
-  renderGroupSwatches(Number(controls.segments.value));
   const settings = readSettings();
+  renderGroupSwatches(settings.segments);
   selectedCell.ring = Math.min(selectedCell.ring, settings.rings - 1);
   selectedCell.segment = Math.min(selectedCell.segment, settings.segments - 1);
   const outerRadius = 245 * settings.scale;
@@ -476,26 +653,27 @@ function render() {
     art.append(background);
   }
 
-  const drawnSegments = [];
-  for (let ring = 0; ring < settings.rings; ring += 1) {
-    const outer = outerRadius - ring * (ringWidth + gap);
-    const inner = outer - ringWidth;
-
-    for (let segment = 0; segment < settings.segments; segment += 1) {
-      const ringJitter = settings.variation === 0 ? 0 : seededUnit(ring + 1) * 2 - 1;
-      const offset = ringJitter * settings.variation * segmentAngle * 0.3;
-      const groupRotation = segmentRotations.get(segment) || 0;
-      const start = 180 + groupRotation + ring * offset + segment * segmentAngle;
-      const end = 180 + groupRotation + ring * offset + (segment + 1) * segmentAngle;
-      const key = cellKey(ring, segment);
-      if (emptyCells.has(key) || emptyGroups.has(segment)) continue;
-      drawnSegments.push({
-        ring: ring,
-        segment: segment,
-        d: createRingSegment(outer, inner, start, end),
-        fill: cellColor(settings, ring, segment),
-        offset: segmentOffsets.get(segment) || { x: 0, y: 0 }
-      });
+  const drawnSegments = settings.type === "radiating" ? createRadiatingBands(settings) : [];
+  if (settings.type === "concentric") {
+    for (let ring = 0; ring < settings.rings; ring += 1) {
+      const outer = outerRadius - ring * (ringWidth + gap);
+      const inner = outer - ringWidth;
+      for (let segment = 0; segment < settings.segments; segment += 1) {
+        const ringJitter = settings.variation === 0 ? 0 : seededUnit(ring + 1) * 2 - 1;
+        const offset = ringJitter * settings.variation * segmentAngle * 0.3;
+        const groupRotation = segmentRotations.get(segment) || 0;
+        const start = 180 + groupRotation + ring * offset + segment * segmentAngle;
+        const end = 180 + groupRotation + ring * offset + (segment + 1) * segmentAngle;
+        const key = cellKey(ring, segment);
+        if (emptyCells.has(key) || emptyGroups.has(segment)) continue;
+        drawnSegments.push({
+          ring: ring,
+          segment: segment,
+          d: createRingSegment(outer, inner, start, end),
+          fill: cellColor(settings, ring, segment),
+          offset: segmentOffsets.get(segment) || { x: 0, y: 0 }
+        });
+      }
     }
   }
 
@@ -510,7 +688,9 @@ function render() {
     path.dataset.segment = String(item.segment + 1);
     path.setAttribute("role", "button");
     path.setAttribute("tabindex", "0");
-    path.setAttribute("aria-label", "Ring " + (item.ring + 1) + ", group " + (item.segment + 1));
+    path.setAttribute("aria-label", settings.type === "radiating"
+      ? "Band " + (item.segment + 1)
+      : "Ring " + (item.ring + 1) + ", group " + (item.segment + 1));
     if (selectedCell.ring === item.ring && selectedCell.segment === item.segment) path.classList.add("is-selected");
     path.addEventListener("click", function () { selectCell(item.ring, item.segment); });
     path.addEventListener("keydown", function (event) {
@@ -572,25 +752,35 @@ function render() {
   }
 
   outputs.rings.value = settings.rings + (settings.rings === 1 ? " ring" : " rings");
-  outputs.segments.value = settings.segments + (settings.segments === 1 ? " group" : " groups");
+  outputs.segments.value = settings.segments + (settings.type === "radiating" ? " bands" : settings.segments === 1 ? " group" : " groups");
   outputs.spacing.value = settings.spacing + " px";
   outputs.clearance.value = Math.round(settings.clearance * 100) + "% of radius";
   outputs.dotSize.value = Math.round(settings.dotSize * 100) + "% of diameter";
   outputs.variation.value = Math.round(settings.variation * 100) + "%";
-  outputs.bandWidth.value = rounded(ringWidth) + " px";
+  outputs.calculatedBandWidth.value = rounded(ringWidth) + " px";
+  outputs.bandCount.value = settings.segments + " bands";
+  outputs.bandSpan.value = settings.bandSpan + " px";
+  outputs.fanAngle.value = settings.fanAngle + "°";
+  outputs.bandLength.value = settings.bandLength + " px";
+  outputs.bandWidth.value = settings.bandWidth + " px";
+  outputs.baselineY.value = settings.baselineY + " px";
   outputs.scale.value = Math.round(settings.scale * 100) + "%";
   outputs.rotation.value = settings.rotation + "°";
   outputs.dotX.value = settings.dotX + " units";
   outputs.dotY.value = settings.dotY + " units";
+  const itemName = settings.type === "radiating" ? "Band" : "Group";
   controls.colors.forEach(function (button, index) {
-    updateColourTrigger(button, button.dataset.color, "Group " + (index + 1) + " default colour");
+    updateColourTrigger(button, button.dataset.color, itemName + " " + (index + 1) + " default colour");
   });
   updateColourTrigger(controls.dotColor, settings.dotColor, "Centre dot colour");
-  document.querySelector("#shape-count").textContent = settings.rings + (settings.rings === 1 ? " ring" : " rings");
+  document.querySelector("#shape-count").textContent = settings.type === "radiating"
+    ? settings.segments + " bands"
+    : settings.rings + (settings.rings === 1 ? " ring" : " rings");
   document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% variation";
   stage.classList.toggle("has-background", settings.background);
-  preview.querySelector("#shape-desc").textContent =
-    settings.rings + " concentric rings arranged in " + settings.segments + " colour groups, with " + Math.round(settings.variation * 100) + " percent variation.";
+  preview.querySelector("#shape-desc").textContent = settings.type === "radiating"
+    ? settings.segments + " radiating bands with " + Math.round(settings.variation * 100) + " percent variation."
+    : settings.rings + " concentric rings arranged in " + settings.segments + " colour groups, with " + Math.round(settings.variation * 100) + " percent variation.";
   renderSegmentEditor(settings);
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
@@ -603,6 +793,15 @@ function render() {
 }
 
 function renderSegmentEditor(settings) {
+  const radiating = settings.type === "radiating";
+  document.querySelector("#segment-editor-title").textContent = radiating ? "Individual bands" : "Individual sections";
+  document.querySelector("#segment-editor-help").textContent = radiating
+    ? "Choose a band to adjust its colour, position, or visibility."
+    : "Choose a ring and group. Each section can use its own colour or be left empty.";
+  document.querySelector("#group-palette-legend").textContent = radiating ? "Default band colours" : "Default group colours";
+  document.querySelector("#position-help").textContent = radiating
+    ? "Move or rotate the selected band along the baseline."
+    : "Move or rotate every ring section in the active group.";
   selectedCell.ring = Math.min(selectedCell.ring, settings.rings - 1);
   selectedCell.segment = Math.min(selectedCell.segment, settings.segments - 1);
   activeGroup = Math.min(activeGroup, settings.segments - 1);
@@ -613,12 +812,12 @@ function renderSegmentEditor(settings) {
   heading.className = "segment-grid-row segment-grid-heading";
   const corner = document.createElement("span");
   corner.className = "segment-grid-label";
-  corner.textContent = "Ring";
+  corner.textContent = radiating ? "Band" : "Ring";
   heading.append(corner);
   for (let segment = 0; segment < settings.segments; segment += 1) {
     const label = document.createElement("span");
     label.className = "segment-column-label";
-    label.textContent = "G" + (segment + 1);
+    label.textContent = radiating ? String(segment + 1) : "G" + (segment + 1);
     heading.append(label);
   }
   segmentGrid.append(heading);
@@ -628,7 +827,7 @@ function renderSegmentEditor(settings) {
     row.className = "segment-grid-row";
     const rowLabel = document.createElement("span");
     rowLabel.className = "segment-grid-label";
-    rowLabel.textContent = String(ring + 1);
+    rowLabel.textContent = radiating ? "Colour" : String(ring + 1);
     row.append(rowLabel);
 
     for (let segment = 0; segment < settings.segments; segment += 1) {
@@ -639,7 +838,9 @@ function renderSegmentEditor(settings) {
       cell.className = "segment-cell" + (empty ? " is-empty" : "");
       cell.style.setProperty("--cell-color", cellColor(settings, ring, segment));
       cell.textContent = empty ? "∅" : "";
-      cell.setAttribute("aria-label", "Ring " + (ring + 1) + ", group " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
+      cell.setAttribute("aria-label", radiating
+        ? "Band " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment))
+        : "Ring " + (ring + 1) + ", group " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
       cell.setAttribute("aria-pressed", String(selectedCell.ring === ring && selectedCell.segment === segment));
       if (selectedCell.ring === ring && selectedCell.segment === segment) cell.classList.add("is-selected");
       cell.addEventListener("click", function () { selectCell(ring, segment); });
@@ -648,9 +849,11 @@ function renderSegmentEditor(settings) {
     segmentGrid.append(row);
   }
 
-  cellEditor.label.textContent = "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
+  cellEditor.label.textContent = radiating
+    ? "Band " + (selectedCell.segment + 1)
+    : "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
   const position = segmentOffsets.get(activeGroup) || { x: 0, y: 0 };
-  cellEditor.positionTitle.textContent = "Group " + (activeGroup + 1);
+  cellEditor.positionTitle.textContent = (radiating ? "Band " : "Group ") + (activeGroup + 1);
   cellEditor.x.value = String(position.x);
   cellEditor.y.value = String(position.y);
   const groupRotation = segmentRotations.get(activeGroup) || 0;
@@ -700,6 +903,7 @@ function seededUnit(value, seed) {
 }
 
 function buildExportSvg() {
+  const settings = readSettings();
   const clone = preview.cloneNode(true);
   clone.querySelector("#shape-title")?.remove();
   clone.querySelector("#shape-desc")?.remove();
@@ -711,13 +915,15 @@ function buildExportSvg() {
 
   const title = document.createElementNS(SVG_NS, "title");
   title.setAttribute("id", "export-title");
-  title.textContent = "Pressbooks Shapes concentric ring composition";
+  title.textContent = "Pressbooks Shapes " + (settings.type === "radiating" ? "radiating composition" : "concentric ring composition");
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
   const overlapDescription = settings.overlapMode === "transparent"
     ? " with overlapping areas removed"
     : settings.overlapMode === "multiply" ? " with overlapping colours multiplied" : "";
-  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups" + overlapDescription + ".";
+  description.textContent = settings.type === "radiating"
+    ? settings.segments + " radiating bands" + overlapDescription + "."
+    : settings.rings + " concentric rings and " + settings.segments + " groups" + overlapDescription + ".";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
 
@@ -729,7 +935,7 @@ function downloadSvg() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "pressbooks-concentric-rings.svg";
+  anchor.download = "pressbooks-" + (designTypeSelect.value === "radiating" ? "radiating-bands" : "concentric-rings") + ".svg";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -741,7 +947,7 @@ function buildPresetPayload() {
   return {
     format: "pressbooks-shapes-preset",
     version: 2,
-    designType: "concentric",
+    designType: settings.type,
     randomSeed: compositionSeed,
     settings: {
       rings: settings.rings,
@@ -753,6 +959,13 @@ function buildPresetPayload() {
       rotationDegrees: settings.rotation,
       background: settings.background,
       overlapMode: settings.overlapMode,
+      radiating: {
+        baselineSpanPx: settings.bandSpan,
+        fanSpreadDegrees: settings.fanAngle,
+        bandLengthPx: settings.bandLength,
+        bandWidthPx: settings.bandWidth,
+        baselineY: settings.baselineY
+      },
       centreDot: {
         visible: settings.dotVisible,
         sizePercent: Math.round(settings.dotSize * 100),
@@ -789,7 +1002,7 @@ function exportPresetSettings() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "pressbooks-shapes-concentric-preset.json";
+  anchor.download = "pressbooks-shapes-" + designTypeSelect.value + "-preset.json";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -805,12 +1018,15 @@ function isBrandColour(value) {
 }
 
 function validatePresetPayload(payload) {
-  if (!payload || payload.format !== "pressbooks-shapes-preset" || ![1, 2].includes(payload.version) || payload.designType !== "concentric") {
-    throw new Error("Choose a supported Pressbooks Shapes concentric preset JSON file.");
+  const supportedDesign = payload && (payload.designType === "concentric"
+    || payload.version === 2 && payload.designType === "radiating");
+  if (!payload || payload.format !== "pressbooks-shapes-preset" || ![1, 2].includes(payload.version) || !supportedDesign) {
+    throw new Error("Choose a supported Pressbooks Shapes preset JSON file.");
   }
 
   const settings = payload.settings;
   const dot = settings && settings.centreDot;
+  const radiating = settings && settings.radiating;
   const settingsValid = settings
     && isIntegerBetween(settings.rings, 1, 8)
     && isIntegerBetween(settings.groups, 1, 8)
@@ -823,6 +1039,14 @@ function validatePresetPayload(payload) {
     && (payload.version === 1
       ? typeof settings.excludeOverlaps === "boolean"
       : ["normal", "transparent", "multiply"].includes(settings.overlapMode))
+    && (payload.designType !== "radiating" || payload.version === 2
+      && isIntegerBetween(settings.rings, 1, 1)
+      && radiating
+      && isIntegerBetween(radiating.baselineSpanPx, 80, 360)
+      && isIntegerBetween(radiating.fanSpreadDegrees, 0, 70)
+      && isIntegerBetween(radiating.bandLengthPx, 140, 520)
+      && isIntegerBetween(radiating.bandWidthPx, 8, 72)
+      && isIntegerBetween(radiating.baselineY, 280, 600))
     && dot
     && typeof dot.visible === "boolean"
     && isIntegerBetween(dot.sizePercent, 0, 30)
@@ -857,8 +1081,17 @@ function validatePresetPayload(payload) {
 
 function applyPresetPayload(payload) {
   const settings = payload.settings;
+  setDesignType(payload.designType, true, false);
   controls.rings.value = String(settings.rings);
   controls.segments.value = String(settings.groups);
+  if (payload.designType === "radiating") {
+    controls.bandCount.value = String(settings.groups);
+    controls.bandSpan.value = String(settings.radiating.baselineSpanPx);
+    controls.fanAngle.value = String(settings.radiating.fanSpreadDegrees);
+    controls.bandLength.value = String(settings.radiating.bandLengthPx);
+    controls.bandWidth.value = String(settings.radiating.bandWidthPx);
+    controls.baselineY.value = String(settings.radiating.baselineY);
+  }
   controls.spacing.value = String(settings.ringSpacingPx);
   controls.clearance.value = String(settings.innerClearancePercent);
   controls.variation.value = String(settings.variationPercent);
@@ -925,6 +1158,7 @@ async function importPresetFile(file) {
 }
 
 function createSurpriseCandidate() {
+  if (designTypeSelect.value === "radiating") return createRadiatingCandidate();
   const rings = randomInteger(3, 8);
   const segments = randomInteger(2, 8);
   const settings = {
@@ -983,6 +1217,64 @@ function createSurpriseCandidate() {
     }
     if (Math.random() < 0.58) {
       const rotation = randomInteger(-35, 35, 5);
+      if (rotation) candidate.groupRotations.set(segment, rotation);
+    }
+  }
+  return candidate;
+}
+
+function createRadiatingCandidate() {
+  const segments = randomInteger(4, 8);
+  const settings = {
+    type: "radiating",
+    rings: 1,
+    segments: segments,
+    spacing: 0,
+    clearance: randomInteger(22, 48),
+    variation: Math.random() < 0.22 ? 0 : randomInteger(4, 24),
+    scale: randomInteger(88, 112),
+    rotation: randomInteger(0, 359),
+    dotSize: Math.random() < 0.8 ? 0 : randomInteger(6, 18),
+    dotVisible: Math.random() < 0.3,
+    dotX: randomInteger(-20, 20, 5),
+    dotY: randomInteger(-20, 20, 5),
+    background: Math.random() < 0.28,
+    overlapMode: randomChoice(["normal", "normal", "multiply", "multiply", "transparent"]),
+    bandSpan: randomInteger(160, 300, 10),
+    fanAngle: randomInteger(20, 56),
+    bandLength: randomInteger(260, 440, 10),
+    bandWidth: randomInteger(18, 48, 2),
+    baselineY: randomInteger(500, 590, 10),
+    dotColor: randomChoice(BRAND_100_COLOURS)
+  };
+  const familyCount = randomInteger(2, Math.min(4, segments));
+  const colourFamilies = shuffled(BRAND_PALETTE).slice(0, familyCount);
+  const colours = Array.from({ length: segments }, function (_, segment) {
+    const family = colourFamilies[segment % colourFamilies.length];
+    const tone = Math.random() < 0.78 ? "100" : randomChoice(["80", "120"]);
+    return family.values.find(function (entry) { return entry[0] === tone; })[1].toUpperCase();
+  });
+  const candidate = {
+    type: "radiating",
+    settings: settings,
+    colours: colours,
+    cellColours: new Map(),
+    emptyCells: new Set(),
+    emptyGroups: new Set(),
+    groupOffsets: new Map(),
+    groupRotations: new Map(),
+    seed: randomInteger(1, 1000000000)
+  };
+  for (let segment = 1; segment < segments; segment += 1) {
+    if (Math.random() < 0.08) candidate.emptyGroups.add(segment);
+  }
+  for (let segment = 0; segment < segments; segment += 1) {
+    if (Math.random() < 0.5) {
+      const offset = { x: randomInteger(-20, 20, 4), y: randomInteger(-20, 20, 4) };
+      if (offset.x || offset.y) candidate.groupOffsets.set(segment, offset);
+    }
+    if (Math.random() < 0.35) {
+      const rotation = randomInteger(-15, 15, 3);
       if (rotation) candidate.groupRotations.set(segment, rotation);
     }
   }
@@ -1162,12 +1454,105 @@ function evaluateConcentricCandidate(candidate) {
   return scoreConcentricCandidate(candidate, geometry);
 }
 
+function evaluateRadiatingCandidate(candidate) {
+  const settings = candidate.settings;
+  const gridSize = 32;
+  const scale = settings.scale / 100;
+  const baseline = CENTER + (settings.baselineY - CENTER) * scale;
+  const globalAngle = -settings.rotation * Math.PI / 180;
+  const cosGlobal = Math.cos(globalAngle);
+  const sinGlobal = Math.sin(globalAngle);
+  const visibleBands = new Set();
+  let paintedCount = 0;
+  let sumX = 0;
+  let sumY = 0;
+  let edgeCount = 0;
+
+  for (let row = 0; row < gridSize; row += 1) {
+    for (let column = 0; column < gridSize; column += 1) {
+      const screenX = (column + 0.5) * 600 / gridSize;
+      const screenY = (row + 0.5) * 600 / gridSize;
+      const dx = screenX - CENTER;
+      const dy = screenY - CENTER;
+      const artX = CENTER + dx * cosGlobal - dy * sinGlobal;
+      const artY = CENTER + dx * sinGlobal + dy * cosGlobal;
+      let coveredBands = 0;
+      for (let segment = 0; segment < settings.segments; segment += 1) {
+        if (candidate.emptyGroups.has(segment) || candidate.emptyCells.has(cellKey(0, segment))) continue;
+        const position = settings.segments === 1 ? 0.5 : segment / (settings.segments - 1);
+        const variation = settings.variation / 100;
+        const angleJitter = (seededUnit(segment + 11, candidate.seed) - 0.5) * variation * 18;
+        const lengthFactor = Math.max(0.35, 0.64 + 0.36 * Math.sin(Math.PI * position) + (seededUnit(segment + 29, candidate.seed) - 0.5) * variation * 0.5);
+        const widthFactor = 1 + (seededUnit(segment + 47, candidate.seed) - 0.5) * variation * 0.4;
+        const angle = ((position - 0.5) * settings.fanAngle + angleJitter + (candidate.groupRotations.get(segment) || 0)) * Math.PI / 180;
+        const offset = candidate.groupOffsets.get(segment) || { x: 0, y: 0 };
+        const anchorX = CENTER + (position - 0.5) * settings.bandSpan * scale + offset.x;
+        const baselineY = baseline + offset.y;
+        const localX = artX - anchorX;
+        const localY = artY - baselineY;
+        const along = localX * Math.sin(angle) - localY * Math.cos(angle);
+        const across = localX * Math.cos(angle) + localY * Math.sin(angle);
+        const length = settings.bandLength * scale * lengthFactor;
+        const width = settings.bandWidth * scale * widthFactor;
+        if (along < 0 || along > length || Math.abs(across) > width / 2) continue;
+        coveredBands += 1;
+        visibleBands.add(segment);
+      }
+      let painted = settings.overlapMode === "transparent" ? coveredBands === 1 : coveredBands > 0;
+      if (settings.dotVisible && settings.dotSize > 0) {
+        const dotX = CENTER + settings.dotX;
+        const dotY = CENTER + settings.dotY;
+        const dotRadius = 245 * scale * settings.dotSize / 100;
+        const dotDx = artX - dotX;
+        const dotDy = artY - dotY;
+        if (dotDx * dotDx + dotDy * dotDy <= dotRadius * dotRadius) painted = true;
+      }
+      if (!painted) continue;
+      paintedCount += 1;
+      sumX += screenX;
+      sumY += screenY;
+      if (row === 0 || column === 0 || row === gridSize - 1 || column === gridSize - 1) edgeCount += 1;
+    }
+  }
+
+  const totalSamples = gridSize * gridSize;
+  const centroidX = paintedCount ? sumX / paintedCount : CENTER;
+  const centroidY = paintedCount ? sumY / paintedCount : CENTER;
+  const geometry = {
+    coverage: paintedCount / totalSamples,
+    centroidOffset: Math.hypot(centroidX - CENTER, centroidY - CENTER) / 300,
+    edgeShare: paintedCount ? edgeCount / paintedCount : 1,
+    visibleBands: visibleBands.size
+  };
+  const palette = scorePaletteHarmony(candidate);
+  const balance = clamp01(1 - geometry.centroidOffset / 0.3);
+  const negativeSpace = clamp01(1 - Math.abs(geometry.coverage - 0.28) / 0.28);
+  const restraint = clamp01(1 - (0.35 * settings.fanAngle / 70
+    + 0.3 * settings.variation / 35
+    + 0.2 * Math.abs(settings.scale - 100) / 25
+    + 0.15 * settings.bandWidth / 72));
+  const valid = geometry.visibleBands >= Math.min(3, settings.segments)
+    && geometry.coverage >= 0.08
+    && geometry.coverage <= 0.72
+    && geometry.edgeShare <= 0.35;
+  return scoreDesignCandidate({ palette: palette, balance: balance, negativeSpace: negativeSpace, restraint: restraint, valid: valid });
+}
+
 function applySurpriseCandidate(candidate) {
   const settings = candidate.settings;
-  controls.rings.value = String(settings.rings);
-  controls.segments.value = String(settings.segments);
-  controls.spacing.value = String(settings.spacing);
-  controls.clearance.value = String(settings.clearance);
+  if (candidate.type === "radiating") {
+    controls.bandCount.value = String(settings.segments);
+    controls.bandSpan.value = String(settings.bandSpan);
+    controls.fanAngle.value = String(settings.fanAngle);
+    controls.bandLength.value = String(settings.bandLength);
+    controls.bandWidth.value = String(settings.bandWidth);
+    controls.baselineY.value = String(settings.baselineY);
+  } else {
+    controls.rings.value = String(settings.rings);
+    controls.segments.value = String(settings.segments);
+    controls.spacing.value = String(settings.spacing);
+    controls.clearance.value = String(settings.clearance);
+  }
   controls.variation.value = String(settings.variation);
   controls.scale.value = String(settings.scale);
   controls.rotation.value = String(settings.rotation);
@@ -1200,11 +1585,18 @@ function generateSurprise() {
   closePalette(false);
   pendingGroupIndex = null;
   groupInspector.classList.remove("is-fading-out");
-  const candidate = chooseHarmoniousCandidate(createSurpriseCandidate, evaluateConcentricCandidate, 16, 0.72);
+  const radiating = designTypeSelect.value === "radiating";
+  const candidate = chooseHarmoniousCandidate(
+    createSurpriseCandidate,
+    radiating ? evaluateRadiatingCandidate : evaluateConcentricCandidate,
+    16,
+    0.72
+  );
   applySurpriseCandidate(candidate);
   const settings = candidate.settings;
-  document.querySelector("#surprise-status").textContent =
-    "New composition generated with " + settings.rings + " rings and " + settings.segments + " groups. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100.";
+  document.querySelector("#surprise-status").textContent = radiating
+    ? "New composition generated with " + settings.segments + " bands. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100."
+    : "New composition generated with " + settings.rings + " rings and " + settings.segments + " groups. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100.";
 }
 
 Object.values(controls).forEach(function (control) {
@@ -1309,7 +1701,7 @@ cellEditor.reset.addEventListener("click", function () {
     cellColors.delete(cellKey(target.ring, target.segment));
     emptyCells.delete(cellKey(target.ring, target.segment));
   } else if (target.type === "group") {
-    groupColours[target.index] = DEFAULT_GROUP_COLOURS[target.index % DEFAULT_GROUP_COLOURS.length];
+    groupColours[target.index] = defaultColourFor(target.index);
   } else {
     return;
   }
@@ -1324,4 +1716,6 @@ groupInspector.addEventListener("transitionend", function (event) {
   render();
   groupInspector.classList.remove("is-fading-out");
 });
+designTypeSelect.addEventListener("change", function () { setDesignType(designTypeSelect.value, true, true); });
+updateDesignChrome();
 render();

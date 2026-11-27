@@ -38,18 +38,18 @@
     <div class="preset-notice" id="preset-notice" role="status" aria-live="polite" hidden></div>
     <main id="main" class="layout">
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option selected>Concentric composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option><option disabled>Interlocking · coming soon</option></select></h1>
-        <p>Arrange concentric groups, refine the details, and download your SVG.</p>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option><option disabled>Interlocking · coming soon</option></select></h1>
+        <p id="intro-description">Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
         <section class="preview-panel" aria-label="Shape preview">
           <div class="preview-head">
             <div><span class="panel-kicker">Live preview</span><span class="preview-size">600 × 600</span></div>
-            <span class="seed-badge"><span class="seed-dot"></span><span>Concentric composition</span></span>
+            <span class="seed-badge"><span class="seed-dot"></span><span id="preview-type-label">Concentric composition</span></span>
           </div>
           <div class="preview-stage" id="preview-stage">
             <svg id="shape-preview" viewBox="0 0 600 600" role="img" aria-labelledby="shape-title shape-desc" xmlns="http://www.w3.org/2000/svg">
-              <title id="shape-title">Concentric ring preview</title>
+              <title id="shape-title">Concentric composition preview</title>
               <desc id="shape-desc">A composition of concentric colour groups.</desc>
               <g id="shape-art"></g>
             </svg>
@@ -63,11 +63,22 @@
           </div>
           <section id="design-controls-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="design-controls-tab">
           <div class="controls-head"><button class="surprise-button" id="surprise-me" type="button" aria-label="Surprise me"><span class="surprise-icon"><i class="ph-light ph-dice-five" aria-hidden="true"></i></span><span class="surprise-label">Surprise me</span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span></button></div>
-          <h3 class="control-section-title">Composition</h3>
-          <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">5 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="5" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="segments">Groups</label><output id="segments-output" for="segments">4 groups</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="spacing">Ring spacing</label><output id="spacing-output" for="spacing">8 px</output></div><input id="spacing" name="spacing" type="range" min="0" max="24" value="8" step="1"><div class="range-ends"><span>Tight</span><span>Open</span></div></div>
-          <div class="control-group"><div class="control-label"><label for="clearance">Inner clearance</label><output id="clearance-output" for="clearance">36% of radius</output></div><input id="clearance" name="clearance" type="range" min="15" max="60" value="36" step="1"><div class="range-ends"><span>Small</span><span>Large</span></div></div>
+          <div id="concentric-controls">
+            <h3 class="control-section-title">Composition</h3>
+            <div class="control-group"><div class="control-label"><label for="rings">Rings</label><output id="rings-output" for="rings">5 rings</output></div><input id="rings" name="rings" type="range" min="1" max="8" value="5" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="segments">Groups</label><output id="segments-output" for="segments">4 groups</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="spacing">Ring spacing</label><output id="spacing-output" for="spacing">8 px</output></div><input id="spacing" name="spacing" type="range" min="0" max="24" value="8" step="1"><div class="range-ends"><span>Tight</span><span>Open</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="clearance">Inner clearance</label><output id="clearance-output" for="clearance">36% of radius</output></div><input id="clearance" name="clearance" type="range" min="15" max="60" value="36" step="1"><div class="range-ends"><span>Small</span><span>Large</span></div></div>
+          </div>
+          <div id="radiating-controls" hidden>
+            <h3 class="control-section-title">Composition</h3>
+            <div class="control-group"><div class="control-label"><label for="band-count">Bands</label><output id="band-count-output" for="band-count">6 bands</output></div><input id="band-count" name="band-count" type="range" min="2" max="8" value="6" step="1"><div class="range-ends"><span>2</span><span>8</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="band-span">Baseline span</label><output id="band-span-output" for="band-span">200 px</output></div><input id="band-span" name="band-span" type="range" min="80" max="360" value="200" step="10"><div class="range-ends"><span>Narrow</span><span>Wide</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="fan-angle">Fan spread</label><output id="fan-angle-output" for="fan-angle">44°</output></div><input id="fan-angle" name="fan-angle" type="range" min="0" max="70" value="44" step="1"><div class="range-ends"><span>Parallel</span><span>Wide</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="band-length">Band length</label><output id="band-length-output" for="band-length">480 px</output></div><input id="band-length" name="band-length" type="range" min="140" max="520" value="480" step="10"><div class="range-ends"><span>Short</span><span>Long</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="band-width">Band width</label><output id="band-width-input-output" for="band-width">32 px</output></div><input id="band-width" name="band-width" type="range" min="8" max="72" value="32" step="2"><div class="range-ends"><span>Fine</span><span>Broad</span></div></div>
+            <div class="control-group"><div class="control-label"><label for="baseline-y">Baseline position</label><output id="baseline-y-output" for="baseline-y">600 px</output></div><input id="baseline-y" name="baseline-y" type="range" min="280" max="600" value="600" step="10"><div class="range-ends"><span>Up</span><span>Down</span></div></div>
+          </div>
           <fieldset class="overlap-mode-control">
             <legend>Overlap treatment</legend>
             <p class="control-help">Choose how groups interact where they cross.</p>
@@ -81,7 +92,7 @@
             <summary>Advanced settings</summary>
             <div class="advanced-controls-body">
               <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="100" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
-              <div class="control-group"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
+              <div class="control-group concentric-only"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
               <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
               <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Turn the complete design inside the artboard.</p></div>
               <fieldset class="center-dot-settings">
@@ -104,19 +115,19 @@
             <p class="group-panel-help">Select a group or ring section to adjust its colour, position, or visibility.</p>
             <div class="groups-editor">
               <fieldset class="segment-editor">
-                <legend class="segment-editor-legend">Individual sections <output id="selected-cell-label">Ring 1 · Group 1</output></legend>
-                <p class="segment-editor-help">Choose a ring and group. Each section can use its own colour or be left empty.</p>
+                <legend class="segment-editor-legend"><span id="segment-editor-title">Individual sections</span><output id="selected-cell-label">Ring 1 · Group 1</output></legend>
+                <p id="segment-editor-help" class="segment-editor-help">Choose a ring and group. Each section can use its own colour or be left empty.</p>
                 <div id="segment-grid" class="segment-grid" aria-label="Ring and object group colour grid"></div>
               </fieldset>
               <div class="group-column">
                 <fieldset class="palette-control">
-                  <legend>Default group colours</legend>
+                  <legend id="group-palette-legend">Default group colours</legend>
                   <div class="palette-swatches" id="group-swatches"></div>
                 </fieldset>
                 <div class="group-inspector">
                   <div class="segment-position">
                     <div class="control-label"><strong id="position-title">Group 1</strong><button class="reset-position-button" id="reset-group-position" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div>
-                    <p class="segment-editor-help">Move or rotate every ring section in the active group.</p>
+                    <p id="position-help" class="segment-editor-help">Move or rotate every ring section in the active group.</p>
                     <label class="position-axis" for="segment-x"><span>Horizontal</span><output id="segment-x-output" for="segment-x">0 units</output></label>
                     <input id="segment-x" name="segment-x" type="range" min="-100" max="100" value="0" step="1">
                     <div class="range-ends"><span>Left</span><span>Right</span></div>
@@ -133,7 +144,7 @@
           </section>
         </aside>
       </div>
-      <footer class="page-footer"><span>Pressbooks Shapes</span><span>Concentric composition · SVG export</span></footer>
+      <footer class="page-footer"><span>Pressbooks Shapes</span><span id="footer-design-label">Concentric composition · SVG export</span></footer>
     </main>
     <div id="palette-popover" class="palette-popover" role="dialog" aria-label="Choose a colour" hidden>
       <div id="palette-grid" class="palette-grid" role="radiogroup" aria-label="Pressbooks colour palette"></div>
