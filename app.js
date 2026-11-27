@@ -231,7 +231,7 @@ function updateDesignChrome() {
   document.querySelector(".group-panel-help").textContent = type === "concentric"
     ? "Select a group or ring section to adjust its colour, position, or visibility."
     : "Select a " + singular + " to adjust its colour, position, or visibility.";
-  document.querySelector("#overlap-help").textContent = modular ? "Choose how the two grids interact where they overlap." : "Choose how " + singular + "s interact where they cross.";
+  document.querySelector("#overlap-help").textContent = modular ? "Choose how the grids interact where they overlap." : "Choose how " + singular + "s interact where they cross.";
   document.querySelector("#overlap-standard-help").textContent = modular ? "Draw layers over one another." : "Draw " + singular + "s over one another.";
   document.querySelector("#rotation-label").textContent = name + " rotation";
   const rotationNumber = rangeNumbers.get("group-rotation");

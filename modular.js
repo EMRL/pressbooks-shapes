@@ -2,17 +2,22 @@
 // cells may change colour or visibility, but never their geometry.
 const MODULAR_ARRANGEMENTS = ["offset", "aligned", "staggered", "checkerboard"];
 const modularKeys = ["columns", "rows", "width", "height", "radius", "gap-x", "gap-y", "layers"];
-const modularLimits = [[2,10],[2,10],[30,300],[30,300],[0,100],[0,100],[0,100],[1,2]];
+const modularLimits = [[2,10],[2,10],[30,300],[30,300],[0,100],[0,100],[0,100],[1,4]];
 let modularState = referenceModularState();
 let activeModularLayer = 0;
 let activeModule = {row: 1, col: 1};
+
+function defaultModularLayer(index) {
+  return {colour:["#99dbcb","#5da3b2","#f4af23","#bb2026"][index], visible:true, x:0, y:-90, opacity:index<2?100:75, modules:{}};
+}
 
 function referenceModularState() {
   return {
     arrangement: "offset", columns: 5, rows: 5, width: 170, height: 170, radius: 40, "gap-x": 9, "gap-y": 9, layers: 2,
     layerData: [
       {colour:"#99dbcb", visible:true, x:0, y:-90, opacity:100, modules:{}},
-      {colour:"#5da3b2", visible:true, x:0, y:-90, opacity:100, modules:{"2:2":{colour:"#bb2026", visible:true}}}
+      {colour:"#5da3b2", visible:true, x:0, y:-90, opacity:100, modules:{"2:2":{colour:"#bb2026", visible:true}}},
+      defaultModularLayer(2), defaultModularLayer(3)
     ]
   };
 }
@@ -20,6 +25,7 @@ function referenceModularState() {
 function modularClone() { return JSON.parse(JSON.stringify(modularState)); }
 function restoreModularState(state) {
   modularState = JSON.parse(JSON.stringify(state));
+  while (modularState.layerData.length < 4) modularState.layerData.push(defaultModularLayer(modularState.layerData.length));
   activeModularLayer = 0;
   activeModule = {row: 1, col: 1};
 }
@@ -76,7 +82,11 @@ function modularRectangles(state, layer) {
   const px = state.width + state["gap-x"], py = state.height + state["gap-y"];
   const baseX = 300 - (state.width + (state.columns - 1) * px) / 2;
   const baseY = 300 - (state.height + (state.rows - 1) * py) / 2;
-  const shift = state.arrangement === "offset" && state.layers === 2 ? (layer === 0 ? -.25 : .25) : 0;
+  // Preserve the original diagonal half-pitch offset for the first two
+  // layers, and use the other two quadrants for the additional layers.
+  const offsets = [[-.25,-.25],[.25,.25],[.25,-.25],[-.25,.25]];
+  const [shiftX,shiftY] = state.arrangement === "offset" && state.layers > 1
+    ? offsets[layer] : [0, ["staggered","checkerboard"].includes(state.arrangement) && layer >= 2 ? .5 : 0];
   const radius = Math.min(state.width, state.height) / 2 * state.radius / 100;
   const rectangles = [];
   for (let row = 0; row < state.rows; row++) {
@@ -87,8 +97,8 @@ function modularRectangles(state, layer) {
       const stagger = state.arrangement === "staggered" ? ((row + layer) % 2 ? .25 : -.25) : 0;
       rectangles.push({
         row,col, colour:cell.colour,
-        x:baseX + col * px + (shift + stagger) * px + data.x,
-        y:baseY + row * py + shift * py + data.y,
+        x:baseX + col * px + (shiftX + stagger) * px + data.x,
+        y:baseY + row * py + shiftY * py + data.y,
         width:state.width, height:state.height, radius
       });
     }
@@ -104,13 +114,16 @@ function modularSvgRect(rect, fill) {
   return shape;
 }
 
-// Transparent removes the intersection of both layers. Identical geometry
-// would therefore erase the entire composition, regardless of colour.
+// Transparent removes any area occupied by two or more visible layers.
+// If every rectangle has an identical counterpart, nothing would remain.
 function modularLayersCoincide(layers) {
-  if (layers.length !== 2 || !layers[0].length || layers[0].length !== layers[1].length) return false;
-  const key = rect => [rect.x, rect.y, rect.width, rect.height, rect.radius].join(":");
-  const first = new Set(layers[0].map(key));
-  return layers[1].every(rect => first.has(key(rect)));
+  const key = rect => [rect.x,rect.y,rect.width,rect.height,rect.radius].join(":");
+  const counts = new Map();
+  layers.forEach(layer => layer.forEach(rect => {
+    const id = key(rect);
+    counts.set(id,(counts.get(id)||0)+1);
+  }));
+  return counts.size > 0 && Array.from(counts.values()).every(count => count >= 2);
 }
 
 function constrainModularOverlap(settings, layers) {
@@ -118,7 +131,7 @@ function constrainModularOverlap(settings, layers) {
   const transparent = controls.overlapModes.find(input => input.value === "transparent");
   transparent.disabled = coincident;
   document.querySelector("#overlap-transparent-help").textContent = coincident
-    ? "Unavailable when both grids coincide exactly."
+    ? "Unavailable when overlapping grids would erase the entire pattern."
     : "Knock out overlapping areas.";
   if (coincident && settings.overlapMode === "transparent") {
     settings.overlapMode = "multiply";
@@ -141,7 +154,7 @@ function renderModular(settings) {
   geometry.style.isolation = "isolate";
   const layers = Array.from({length:state.layers},(_,i)=>modularRectangles(state,i));
   constrainModularOverlap(settings, layers);
-  if (settings.overlapMode === "transparent" && state.layers === 2) {
+  if (settings.overlapMode === "transparent" && state.layers > 1) {
     const defs = document.createElementNS(SVG_NS,"defs");
     layers.forEach((layer,index)=>{
       const mask = document.createElementNS(SVG_NS,"mask");
@@ -151,7 +164,7 @@ function renderModular(settings) {
       for (const key of ["x","y"]) mask.setAttribute(key,"-4000");
       for (const key of ["width","height"]) mask.setAttribute(key,"8000");
       layer.forEach(rect=>mask.append(modularSvgRect(rect,"#ffffff")));
-      layers[1-index].forEach(rect=>mask.append(modularSvgRect(rect,"#000000")));
+      layers.forEach((other,otherIndex)=>{if(otherIndex!==index)other.forEach(rect=>mask.append(modularSvgRect(rect,"#000000")));});
       defs.append(mask);
     });
     geometry.append(defs);
@@ -161,7 +174,7 @@ function renderModular(settings) {
     const group = document.createElementNS(SVG_NS,"g");
     group.setAttribute("opacity",state.layerData[index].opacity / 100);
     if (settings.overlapMode === "multiply") group.style.mixBlendMode = "multiply";
-    if (settings.overlapMode === "transparent" && state.layers === 2) group.setAttribute("mask","url(#modular-mask-" + index + ")");
+    if (settings.overlapMode === "transparent" && state.layers > 1) group.setAttribute("mask","url(#modular-mask-" + index + ")");
     layer.forEach(rect=>{
       const shape = modularSvgRect(rect,rect.colour);
       shape.dataset.module = modularCellKey(index,rect.row,rect.col);
@@ -292,14 +305,27 @@ function createModularCandidate(reference=false) {
     state.width=randomInteger(75,190,5);state.height=randomInteger(75,190,5);
     state.radius=randomInteger(10,65,5);
     state["gap-x"]=randomInteger(4,24,2);state["gap-y"]=randomInteger(4,24,2);
-    state.layers=randomChoice([1,2,2,2]);
-    if(state.layers===2 && state.arrangement==="aligned") state.layerData[1].x=Math.round(state.width/3);
+    state.layers=randomChoice([1,2,2,2,3,4]);
+    state.layerData.forEach(layer=>{layer.x=0;layer.y=0;});
+    if(state.layers>1 && state.arrangement==="aligned") {
+      for(let i=1;i<state.layers;i++){
+        state.layerData[i].x=i%2?Math.round(state.width/3):0;
+        state.layerData[i].y=i>=2?Math.round(state.height/3):0;
+      }
+    }
     const family=randomChoice(BRAND_PALETTE.slice(0,4));
     const other=randomChoice([family,family,...BRAND_PALETTE.slice(0,4)]);
     state.layerData[0].colour=family.values[randomChoice([1,2,3])][1];
     state.layerData[1].colour=other.values[randomChoice([2,3,4])][1];
     state.layerData[1].opacity=randomChoice([75,85,100,100]);
-    state.layerData.forEach(layer=>{layer.modules={};layer.y=0;});
+    state.layerData.forEach((layer,i)=>{
+      layer.modules={};
+      if(i>=2){
+        const layerFamily=randomChoice([family,family,other,...BRAND_PALETTE.slice(0,4)]);
+        layer.colour=layerFamily.values[randomChoice([1,2,3])][1];
+        layer.opacity=randomChoice([60,75,85]);
+      }
+    });
     const layer=state.layers-1;
     const row=Math.floor((state.rows-1)/2),col=Math.floor((state.columns-1)/2);
     const accentCol=modularIncluded(state,layer,row,col)?col:col+1;
@@ -324,7 +350,7 @@ function validModularPreset(payload){
     && ["normal","multiply","transparent"].includes(settings.overlapMode)
     && MODULAR_ARRANGEMENTS.includes(state.arrangement)
     && modularKeys.every((key,index)=>integer(state[key],...modularLimits[index]))
-    && Array.isArray(state.layerData)&&state.layerData.length===2
+    && Array.isArray(state.layerData)&&state.layerData.length>=state.layers&&state.layerData.length<=4
     && state.layerData.every(layer=>layer&&isBrandColour(layer.colour)&&typeof layer.visible==="boolean"
       && integer(layer.x,-300,300)&&integer(layer.y,-300,300)&&integer(layer.opacity,0,100)
       && layer.modules&&typeof layer.modules==="object"&&!Array.isArray(layer.modules)
@@ -348,15 +374,15 @@ function evaluateModularCandidate(candidate){
     const x=300+(dx*cos-dy*sin)/scale,y=300+(dx*sin+dy*cos)/scale;
     const hits=layers.map(layer=>layer.find(rect=>modularHit(rect,x,y)));
     const n=hits.filter(Boolean).length;
-    if(n===2)intersection++;
+    if(n>=2)intersection++;
     if(candidate.settings.overlapMode==="transparent"?n!==1:n===0)continue;
     painted++;sx+=dx;sy+=dy;
     if(hits.some((rect,i)=>rect&&rect.colour!==state.layerData[i].colour))accentVisible=true;
   }
   const coverage=painted/(size*size),overlap=intersection/(size*size);
   const displacement=painted?Math.hypot(sx/painted,sy/painted)/300:1;
-  const family0=paletteEntry(state.layerData[0].colour),family1=paletteEntry(state.layerData[1].colour);
-  const palette=state.layers===1||family0?.family===family1?.family?1:.8;
+  const families=new Set(state.layerData.slice(0,state.layers).map(layer=>paletteEntry(layer.colour)?.family));
+  const palette=clamp01(1-.15*(families.size-1));
   return scoreDesignCandidate({
     palette,balance:clamp01(1-displacement/.4),
     negativeSpace:clamp01(1-Math.abs(coverage-.75)/.75),
