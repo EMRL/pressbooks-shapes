@@ -35,7 +35,7 @@ function trianglePaletteState(key){
   return {empty:cell?.visible===false,reset:!cell};
 }
 function trianglePaletteTrigger(key){return document.querySelector('[data-triangle-colour="'+key+'"]');}
-function resetTriangle(key){delete triangleState.cells[key];}
+function resetTriangle(key){delete triangleState.cells[key];patternFills.delete("triangular:"+key);}
 
 function triangleOrientation(state,row,col){
   const base=TRIANGLE_ORIENTATIONS.indexOf(state.orientation);
@@ -91,7 +91,7 @@ function renderTriangular(settings){
     count++;
     const shape=document.createElementNS(SVG_NS,"polygon");
     shape.setAttribute("points",triangle.points.map(point=>point.join(",")).join(" "));
-    shape.setAttribute("fill",triangle.colour);
+    shape.setAttribute("fill",svgPatternFill("triangular:"+triangleKey(row,col),triangle.colour,{x:triangle.left,y:triangle.top,rotation:90*TRIANGLE_ORIENTATIONS.indexOf(triangle.orientation)}));
     shape.setAttribute("role","button");shape.setAttribute("tabindex","0");
     shape.setAttribute("aria-label","Triangle row "+(row+1)+", column "+(col+1));
     const select=()=>selectTriangle(row,col,true);
@@ -128,6 +128,7 @@ function renderTriangleEditor(){
   defaultButton.dataset.triangleColour="default";defaultButton.setAttribute("aria-haspopup","dialog");defaultButton.setAttribute("aria-expanded","false");defaultButton.setAttribute("aria-controls","palette-popover");
   const swatch=document.createElement("span");swatch.className="color-swatch";defaultButton.append(swatch);
   updateColourTrigger(defaultButton,state.defaultColour,"Default triangle colour");
+  paintFillSwatch(defaultButton,"triangular:default");
   defaultButton.addEventListener("click",()=>openPalette(defaultButton,"triangular","default"));
   const defaultRow=document.createElement("div");defaultRow.className="control-label";
   const strong=document.createElement("strong");strong.textContent="Default triangle colour";defaultRow.append(strong,defaultButton);defaultList.append(defaultRow);
@@ -154,6 +155,7 @@ function renderTriangleEditor(){
       button.textContent=cell.visible?"":"∅";
       button.dataset.triangleColour=triangleKey(row,col);
       button.setAttribute("aria-label","Row "+(row+1)+", column "+(col+1)+", "+(cell.visible?paletteLabel(cell.colour):"empty"));
+      paintFillSwatch(button,"triangular:"+triangleKey(row,col));
       button.setAttribute("aria-pressed",String(selected));button.setAttribute("aria-haspopup","dialog");button.setAttribute("aria-expanded","false");button.setAttribute("aria-controls","palette-popover");
       button.addEventListener("click",()=>selectTriangle(row,col,true));line.append(button);
     }
@@ -164,7 +166,7 @@ function renderTriangleEditor(){
   document.querySelector("#triangle-object-title").textContent="Triangle "+(activeTriangle.row*state.columns+activeTriangle.col+1);
   document.querySelector("#triangle-object-size").value=cell.size;
   document.querySelector("#triangle-object-size-output").value=cell.size+"%";
-  document.querySelector("#reset-triangle").disabled=!state.cells[triangleKey(activeTriangle.row,activeTriangle.col)];
+  document.querySelector("#reset-triangle").disabled=!state.cells[triangleKey(activeTriangle.row,activeTriangle.col)]&&!patternFills.has("triangular:"+triangleKey(activeTriangle.row,activeTriangle.col));
 }
 
 function initTriangular(){
@@ -207,6 +209,7 @@ function createTriangularCandidate(reference=false){
   return {type:"triangular",triangular:state,settings:{rotation:reference?0:randomChoice([0,0,0,90,180,270]),scale:reference?100:randomChoice([100,100,105,110]),background:reference||Math.random()<.5},seed:reference?4821:randomInteger(1,1000000000)};
 }
 function applyTriangularCandidate(candidate){
+  restorePatternFills(candidate.patterns);
   restoreTriangleState(candidate.triangular);controls.rotation.value=candidate.settings.rotation;controls.scale.value=candidate.settings.scale;controls.background.checked=candidate.settings.background;compositionSeed=candidate.seed;render();
 }
 function validTriangularPreset(payload){

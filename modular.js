@@ -65,6 +65,7 @@ function modularPaletteState(key) {
 }
 function setModularEmpty(key, empty) { modularOverride(modularCellData(key)).visible = !empty; }
 function resetModularModule(key) {
+  patternFills.delete("modular:"+key);
   const t = modularCellData(key);
   delete modularState.layerData[t.layer].modules[modularModuleKey(t.row,t.col)];
 }
@@ -176,7 +177,7 @@ function renderModular(settings) {
     if (settings.overlapMode === "multiply") group.style.mixBlendMode = "multiply";
     if (settings.overlapMode === "transparent" && state.layers > 1) group.setAttribute("mask","url(#modular-mask-" + index + ")");
     layer.forEach(rect=>{
-      const shape = modularSvgRect(rect,rect.colour);
+      const shape = modularSvgRect(rect,svgPatternFill("modular:"+modularCellKey(index,rect.row,rect.col),rect.colour,{x:rect.x,y:rect.y}));
       shape.dataset.module = modularCellKey(index,rect.row,rect.col);
       shape.setAttribute("role","button"); shape.setAttribute("tabindex","0");
       shape.setAttribute("aria-label","Layer " + (index+1) + ", row " + (rect.row+1) + ", column " + (rect.col+1));
@@ -233,6 +234,7 @@ function renderModularEditors() {
     });
     selector.colour.dataset.modularColour="layer:"+i;
     updateObjectSelector(selector,label,data.colour,data.visible,activeModularLayer===i);
+    paintFillSwatch(selector.colour,"modular:layer:"+i);
     layerList.append(selector.card);
   }
   const layerSelect=document.querySelector("#modular-module-layer");
@@ -267,6 +269,7 @@ function renderModularEditors() {
       button.disabled=!included;
       button.dataset.modularColour=modularCellKey(activeModularLayer,row,col);
       button.setAttribute("aria-label","Row "+(row+1)+", column "+(col+1)+(included?": "+paletteLabel(cell.colour):": unavailable in checkerboard"));
+      paintFillSwatch(button,"modular:"+modularCellKey(activeModularLayer,row,col));
       button.setAttribute("aria-pressed",String(row===activeModule.row&&col===activeModule.col));
       button.setAttribute("aria-haspopup","dialog");button.setAttribute("aria-expanded","false");button.setAttribute("aria-controls","palette-popover");
       button.addEventListener("click",()=>selectModularCell(activeModularLayer,row,col,true));
@@ -334,6 +337,7 @@ function createModularCandidate(reference=false) {
   return {type:"modular",modular:state,settings:{rotation:reference?0:randomChoice([0,0,0,45,90]),scale:reference?100:randomInteger(85,115,5),background:reference||Math.random()<.5,overlapMode:reference?"multiply":randomChoice(["multiply","multiply","normal","transparent"])},seed:reference?4821:randomInteger(1,1000000000)};
 }
 function applyModularCandidate(candidate){
+  restorePatternFills(candidate.patterns);
   restoreModularState(candidate.modular);
   controls.rotation.value=candidate.settings.rotation;
   controls.scale.value=candidate.settings.scale;

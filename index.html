@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/light/style.css">
     <link rel="stylesheet" href="styles.css">
+    <script src="fills.js" defer></script>
     <script src="contour.js" defer></script>
     <script src="modular.js" defer></script>
     <script src="triangular.js" defer></script>
@@ -285,8 +286,16 @@
       </div>
       <footer class="page-footer"><span>Pressbooks Shapes</span><span id="footer-design-label">Concentric composition · SVG export</span></footer>
     </main>
-    <div id="palette-popover" class="palette-popover" role="dialog" aria-label="Choose a colour" hidden>
+    <div id="palette-popover" class="palette-popover" role="dialog" aria-label="Choose a fill" hidden>
+      <div id="fill-tabs" class="fill-tabs" role="group" aria-label="Fill type" hidden><button id="solid-fill-tab" type="button" aria-pressed="true">Solid</button><button id="pattern-fill-tab" type="button" aria-pressed="false">Pattern</button></div>
+      <div id="pattern-fill-controls" hidden>
+        <div id="pattern-types" class="pattern-types" role="group" aria-label="Pattern type"></div>
+        <div class="pattern-colour-targets"><button type="button" id="pattern-foreground" aria-pressed="true"><span class="pattern-colour-chip"></span>Foreground</button><button type="button" id="pattern-background" aria-pressed="false"><span class="pattern-colour-chip"></span>Background</button><button type="button" id="pattern-transparent">Transparent</button></div>
+        <div class="pattern-fields"><label>Spacing (px) <input id="pattern-spacing" type="number" min="4" max="64" step="1" value="16"></label><label>Weight (px) <input id="pattern-weight" type="number" min="1" max="32" step="1" value="3"></label><label>Rotation (°) <input id="pattern-rotation" type="number" min="0" max="359" step="1" value="0"></label><label>Alignment <select id="pattern-alignment"><option value="composition">Composition</option><option value="object">Object</option></select></label></div>
+        <div class="pattern-preview" id="pattern-preview" aria-label="Pattern preview"></div>
+      </div>
       <div id="palette-grid" class="palette-grid" role="radiogroup" aria-label="Pressbooks colour palette"></div>
+      <button type="button" id="apply-pattern-fill" class="pattern-apply" hidden>Apply pattern</button>
       <div id="section-palette-actions" class="section-palette-actions" hidden>
         <label class="empty-control" for="palette-empty"><input id="palette-empty" type="checkbox"><span id="palette-empty-label">Empty section</span></label>
         <button id="palette-reset" class="reset-cell-button" type="button">Use group default</button>
