@@ -64,6 +64,83 @@ function contourPath(state, index) {
   return d;
 }
 
+// Exact shortest distance to every contour centreline, including the finite
+// tangent sections and semicircle endpoints. Hidden lines are reserved too,
+// so showing a line later never creates a collision.
+function contourClearance(state, x, y) {
+  const R = state.radius;
+  const turns = state.arrangement === "arch" ? 1 : state.arrangement === "wave" ? 4 : 2;
+  const separation = turns === 1 ? 0 : state.separation;
+  let distance = Infinity;
+  const vertical = (vx, y1, y2) => Math.hypot(x - vx, y - Math.max(Math.min(y1, y2), Math.min(Math.max(y1, y2), y)));
+  for (let i = 0; i < state.count; i++) {
+    const offset = (i - (state.count - 1) / 2) * state.spacing;
+    if (state.arrangement === "loop") {
+      distance = Math.min(distance, Math.abs(Math.hypot(x, y) - (R + offset)));
+      continue;
+    }
+    for (let j = 0; j < turns; j++) {
+      const direction = j % 2 === 0 ? 1 : -1;
+      const cx = (j - (turns - 1) / 2) * 2 * R;
+      const cy = direction * separation / 2;
+      const radius = R + direction * offset;
+      const left = cx - radius, right = cx + radius;
+      const arcDistance = (y - cy) * direction >= 0
+        ? Math.abs(Math.hypot(x - cx, y - cy) - radius)
+        : Math.min(Math.hypot(x - left, y - cy), Math.hypot(x - right, y - cy));
+      distance = Math.min(distance, arcDistance);
+      if (j === 0) distance = Math.min(distance, vertical(left, cy - 1800, cy));
+      if (j === turns - 1) distance = Math.min(distance, vertical(right, cy, cy - direction * 1800));
+      else distance = Math.min(distance, vertical(right, cy, -cy));
+    }
+  }
+  return distance - state.weight / 2 - 1;
+}
+
+function safeContourDiameter(state, x, y) {
+  return Math.min(350, Math.floor(2 * contourClearance(state, x, y)));
+}
+
+function circleFitsContour(state, circle) {
+  return circle.diameter <= safeContourDiameter(state, circle.x, circle.y);
+}
+
+// Geometry changes preserve valid circles and try nearby positions for any
+// collision. If the original diameter cannot fit, use the best available gap.
+function fitContourCircles(state) {
+  state.circles.slice(0, state.accents).forEach(circle => {
+    if (circleFitsContour(state, circle)) return;
+    let best = { x: circle.x, y: circle.y, diameter: safeContourDiameter(state, circle.x, circle.y) };
+    let nearest = null;
+    // Search outward from the original centre in small, evenly spaced steps.
+    for (let radius = 8; radius <= (best.diameter >= 10 ? 120 : 600) && !nearest; radius += 8) {
+      const steps = Math.max(16, Math.ceil(2 * Math.PI * radius / 8));
+      for (let i = 0; i < steps; i++) {
+        const angle = 2 * Math.PI * i / steps;
+        const x = Math.round(circle.x + radius * Math.cos(angle));
+        const y = Math.round(circle.y + radius * Math.sin(angle));
+        if (x < -450 || x > 450 || y < -450 || y > 450) continue;
+        const diameter = safeContourDiameter(state, x, y);
+        if (diameter > best.diameter) best = { x, y, diameter };
+        if (diameter >= circle.diameter) {
+          const distance = Math.hypot(x - circle.x, y - circle.y);
+          if (!nearest || distance < nearest.distance) nearest = { x, y, distance };
+        }
+      }
+      // Prefer a smaller nearby circle over moving a full-size object
+      // entirely outside the composition.
+    }
+    if (nearest) {
+      circle.x = nearest.x; circle.y = nearest.y;
+    } else if (best.diameter >= 10) {
+      circle.x = best.x; circle.y = best.y;
+      circle.diameter = Math.min(circle.diameter, best.diameter);
+    } else {
+      circle.visible = false;
+    }
+  });
+}
+
 function contourClone() {
   return JSON.parse(JSON.stringify(contourState));
 }
@@ -159,6 +236,9 @@ function renderContourEditors() {
   document.querySelector("#contour-accent-controls").hidden = !state.accents;
   document.querySelector("#contour-accent-title").textContent = "Circle " + (activeContourAccent + 1);
   const circle = state.circles[activeContourAccent];
+  const sizeInput = document.querySelector("#contour-accent-size");
+  sizeInput.max = Math.max(10, safeContourDiameter(state, circle.x, circle.y));
+  rangeNumbers.get(sizeInput.id).max = sizeInput.max;
   [["size", "diameter"], ["x", "x"], ["y", "y"]].forEach(([id, key]) => {
     document.querySelector("#contour-accent-" + id).value = circle[key];
     document.querySelector("#contour-accent-" + id + "-output").value = circle[key] + " px";
@@ -167,6 +247,7 @@ function renderContourEditors() {
 
 function renderContour(settings) {
   const state = constrainContour(contourState);
+  fitContourCircles(state);
   art.replaceChildren();
   art.removeAttribute("transform");
   if (settings.background) {
@@ -186,7 +267,7 @@ function renderContour(settings) {
     geometry.append(path);
   }
   state.circles.slice(0, state.accents).forEach(circle => {
-    if (!circle.visible) return;
+    if (!circle.visible || !circleFitsContour(state, circle)) return;
     const el = document.createElementNS(SVG_NS, "circle");
     el.setAttribute("cx", 300 + circle.x);
     el.setAttribute("cy", 300 + circle.y);
@@ -236,8 +317,13 @@ function initContour() {
   document.querySelector("#contour-default-colour").addEventListener("click", event => openPalette(event.currentTarget, "contour", "default"));
   [["size", "diameter"], ["x", "x"], ["y", "y"]].forEach(([id, key]) => {
     document.querySelector("#contour-accent-" + id).addEventListener("input", event => {
-      contourState.circles[activeContourAccent][key] = Number(event.target.value);
+      const circle = contourState.circles[activeContourAccent];
+      const proposed = { ...circle, [key]: Number(event.target.value) };
+      if (circleFitsContour(contourState, proposed)) circle[key] = proposed[key];
       render();
+      // The numeric input may still have focus, so explicitly restore any
+      // value that was rejected by the clearance constraint.
+      rangeNumbers.get(event.target.id).value = event.target.value;
     });
   });
   document.querySelector("#reset-contour-accent").addEventListener("click", () => {
@@ -286,6 +372,7 @@ function createContourCandidate(reference = false) {
     const positions = contourAccentPositions(state);
     state.circles = state.circles.map((circle, i) => ({...circle, ...positions[i], colour: palette[i % palette.length]}));
   }
+  fitContourCircles(state);
   return {type:"contour", contour:state, settings:{rotation:reference ? 325 : randomChoice([0, 35, 90, 145, 180, 325]), scale:reference ? 100 : randomInteger(80, 110, 5), background:reference || Math.random() < .5}, seed:reference ? 4821 : randomInteger(1,1000000000)};
 }
 
