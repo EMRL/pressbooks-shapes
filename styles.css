@@ -308,3 +308,13 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 .preview-show-all .toggle-wrap { flex-shrink: 0; }
 .orbital-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(100px,1fr)); max-height: 280px; overflow-y: auto; gap: 8px; margin-bottom: 18px; }
 @media (max-width: 680px) { .preview-head { flex-wrap: wrap; } .preview-show-all { margin-left: auto; } }
+
+/* These are preview-only editing states; SVG exports retain original colours. */
+#shape-preview.orbital-editing [data-orbital-index] { opacity: .3; }
+#shape-preview.orbital-editing [data-orbital-index].orbital-highlighted { opacity: 1; }
+#shape-preview [data-orbital-index] { cursor: pointer; }
+.orbital-focus-outline { pointer-events: none; }
+.orbital-navigation { display: flex; align-items: center; gap: 6px; }
+.orbital-nav-button { display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; border: 1px solid var(--light-60); border-radius: 4px; background: var(--surface); color: var(--pathways-120); cursor: pointer; }
+.orbital-nav-button:hover { background: var(--light-20); }
+.orbital-nav-button:focus-visible { outline: 2px solid var(--pathways-120); outline-offset: 2px; }
