@@ -104,6 +104,28 @@ function modularSvgRect(rect, fill) {
   return shape;
 }
 
+// Transparent removes the intersection of both layers. Identical geometry
+// would therefore erase the entire composition, regardless of colour.
+function modularLayersCoincide(layers) {
+  if (layers.length !== 2 || !layers[0].length || layers[0].length !== layers[1].length) return false;
+  const key = rect => [rect.x, rect.y, rect.width, rect.height, rect.radius].join(":");
+  const first = new Set(layers[0].map(key));
+  return layers[1].every(rect => first.has(key(rect)));
+}
+
+function constrainModularOverlap(settings, layers) {
+  const coincident = modularLayersCoincide(layers);
+  const transparent = controls.overlapModes.find(input => input.value === "transparent");
+  transparent.disabled = coincident;
+  document.querySelector("#overlap-transparent-help").textContent = coincident
+    ? "Unavailable when both grids coincide exactly."
+    : "Knock out overlapping areas.";
+  if (coincident && settings.overlapMode === "transparent") {
+    settings.overlapMode = "multiply";
+    controls.overlapModes.forEach(input => input.checked = input.value === settings.overlapMode);
+  }
+}
+
 function renderModular(settings) {
   const state = modularState;
   art.replaceChildren();
@@ -118,6 +140,7 @@ function renderModular(settings) {
   geometry.setAttribute("transform","translate(300 300) rotate(" + settings.rotation + ") scale(" + settings.scale + ") translate(-300 -300)");
   geometry.style.isolation = "isolate";
   const layers = Array.from({length:state.layers},(_,i)=>modularRectangles(state,i));
+  constrainModularOverlap(settings, layers);
   if (settings.overlapMode === "transparent" && state.layers === 2) {
     const defs = document.createElementNS(SVG_NS,"defs");
     layers.forEach((layer,index)=>{

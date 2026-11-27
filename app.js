@@ -200,6 +200,10 @@ function updateDesignChrome() {
   const interlocking = type === "interlocking";
   const contour = type === "contour";
   const modular = type === "modular";
+  if (!modular) {
+    controls.overlapModes.find(input => input.value === "transparent").disabled = false;
+    document.querySelector("#overlap-transparent-help").textContent = "Knock out overlapping areas.";
+  }
   const triangular = type === "triangular";
   const singular = objectName(type);
   const name = singular[0].toUpperCase() + singular.slice(1);
