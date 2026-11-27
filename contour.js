@@ -7,6 +7,7 @@ const CONTOUR_ACCENTS = ["#5da3b2", "#bb2026", "#00a47d", "#f4af23", "#25282a", 
 const contourKeys = ["count", "weight", "spacing", "radius", "separation", "accents"];
 let contourState = referenceContourState();
 let activeContourAccent = 0;
+let activeContourLine = 0;
 
 function referenceContourState() {
   return {
@@ -148,6 +149,7 @@ function contourClone() {
 function restoreContourState(state) {
   contourState = JSON.parse(JSON.stringify(state));
   activeContourAccent = 0;
+  activeContourLine = 0;
 }
 
 function contourColour(key) {
@@ -164,94 +166,57 @@ function setContourColour(key, colour) {
   }
 }
 
-function contourColourButton(key, label) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "color-trigger";
-  button.dataset.contourColour = key;
-  button.setAttribute("aria-haspopup", "dialog");
-  button.setAttribute("aria-expanded", "false");
-  button.setAttribute("aria-controls", "palette-popover");
-  const swatch = document.createElement("span");
-  swatch.className = "color-swatch";
-  button.append(swatch);
-  updateColourTrigger(button, contourColour(key), label);
-  button.addEventListener("click", () => openPalette(button, "contour", key));
-  return button;
-}
-
-function contourVisibility(item, label, focusId) {
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.checked = item.visible;
-  input.id = focusId;
-  input.setAttribute("aria-label", "Show " + label);
-  input.addEventListener("change", () => {
-    item.visible = input.checked;
-    render();
-    document.getElementById(focusId)?.focus();
-  });
-  return input;
-}
-
 function renderContourEditors() {
   const state = contourState;
   const defaultButton = document.querySelector("#contour-default-colour");
   updateColourTrigger(defaultButton, state.defaultColour, "Default line colour");
   const lineList = document.querySelector("#contour-line-list");
-  lineList.replaceChildren();
-  for (let i = 0; i < state.count; i++) {
-    const line = state.lines[i];
-    const item = document.createElement("div");
-    item.className = "contour-line-item";
-    const label = document.createElement("span");
-    label.textContent = String(i + 1);
-    const reset = document.createElement("button");
-    reset.type = "button";
-    reset.className = "reset-position-button";
-    reset.innerHTML = '<i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>';
-    reset.setAttribute("aria-label", "Use default colour for line " + (i + 1));
-    reset.disabled = line.colour === null;
-    reset.addEventListener("click", () => { line.colour = null; render(); document.querySelector('[data-contour-colour="line:' + i + '"]')?.focus(); });
-    item.append(label, contourColourButton("line:" + i, "Line " + (i + 1) + " colour"), contourVisibility(line, "line " + (i + 1), "contour-line-visible-" + i), reset);
-    lineList.append(item);
-  }
   const circleList = document.querySelector("#contour-accent-list");
-  circleList.replaceChildren();
+  activeContourLine = Math.min(activeContourLine, state.count - 1);
   activeContourAccent = Math.max(0, Math.min(activeContourAccent, state.accents - 1));
-  for (let i = 0; i < state.accents; i++) {
-    const circle = state.circles[i];
-    const item = document.createElement("div");
-    item.className = "contour-line-item contour-accent-item" + (i === activeContourAccent ? " is-active" : "");
-    const select = document.createElement("button");
-    select.type = "button";
-    select.className = "contour-accent-select";
-    select.textContent = String(i + 1);
-    select.setAttribute("aria-label", "Select circle " + (i + 1));
-    select.setAttribute("aria-pressed", String(i === activeContourAccent));
-    const selectCircle = () => {
-      activeContourAccent = i;
-      closePalette(false);
-      render();
-      circleList.querySelectorAll(".contour-accent-select")[i]?.focus();
-    };
-    select.addEventListener("click", selectCircle);
-    item.addEventListener("click", event => {
-      if (!event.target.closest("button, input, label")) selectCircle();
-    });
-    const colour = contourColourButton("accent:" + i, "Circle " + (i + 1) + " colour");
-    // Selecting a colour should also make that circle the active one.
-    colour.addEventListener("click", () => {
-      if (activeContourAccent === i) return;
-      activeContourAccent = i;
-      closePalette(false);
-      render();
-      const trigger = circleList.querySelector('[data-contour-colour="accent:' + i + '"]');
-      if (trigger) openPalette(trigger, "contour", "accent:" + i);
-    });
-    item.append(select, colour, contourVisibility(circle, "circle " + (i + 1), "contour-circle-visible-" + i));
-    circleList.append(item);
+
+  function populate(list, kind, items, count) {
+    list.replaceChildren();
+    const isLine = kind === "line";
+    const name = isLine ? "line" : "circle";
+    for (let i = 0; i < count; i++) {
+      const item = items[i];
+      const key = kind + ":" + i;
+      const label = name + " " + (i + 1);
+      const current = () => isLine ? activeContourLine : activeContourAccent;
+      const setActive = () => { if (isLine) activeContourLine = i; else activeContourAccent = i; };
+      const findCard = () => list.children[i];
+      const findColour = () => findCard()?.querySelector("[data-contour-colour]");
+      let reset;
+      if (isLine) {
+        reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "reset-position-button object-selector-reset";
+        reset.innerHTML = '<i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>';
+        reset.setAttribute("aria-label", "Use default colour for " + label);
+        reset.disabled = item.colour === null;
+        reset.addEventListener("click", () => { setActive(); item.colour = null; render(); findColour()?.focus(); });
+      }
+      const selector = createObjectSelector(i, label, () => {
+        setActive(); closePalette(false); render();
+        findCard()?.querySelector(".object-selector-select")?.focus();
+      }, trigger => {
+        if (current() !== i) {
+          setActive(); closePalette(false); render();
+          trigger = findColour();
+        }
+        if (trigger) openPalette(trigger, "contour", key);
+      }, visible => {
+        item.visible = visible; render();
+        findCard()?.querySelector("input")?.focus();
+      }, reset);
+      selector.colour.dataset.contourColour = key;
+      updateObjectSelector(selector, label, contourColour(key), item.visible, current() === i);
+      list.append(selector.card);
+    }
   }
+  populate(lineList, "line", state.lines, state.count);
+  populate(circleList, "accent", state.circles, state.accents);
   document.querySelector("#contour-accent-controls").hidden = !state.accents;
   document.querySelector("#contour-accent-title").textContent = "Circle " + (activeContourAccent + 1);
   const circle = state.circles[activeContourAccent];
