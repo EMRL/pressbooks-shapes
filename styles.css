@@ -274,3 +274,10 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 .modular-grid .segment-cell { min-width: 0; }
 .modular-layer-controls { margin-top: 16px; }
 .modular-layer-controls .position-axis { margin-top: 12px; }
+
+#triangular-controls label { font-size: 12px; }
+#triangular-controls .arrangement-select { margin-top: 6px; }
+#reference-triangular { margin: 8px 0 16px; }
+#triangle-default-list { margin-bottom: 16px; }
+#triangle-grid .segment-cell:not(.is-empty) { background: var(--surface); position: relative; overflow: hidden; }
+#triangle-grid .segment-cell:not(.is-empty)::before { content: ""; position: absolute; inset: 0; background: var(--cell-color); clip-path: var(--triangle-clip); transform: scale(var(--triangle-scale)); transform-origin: var(--triangle-origin); }

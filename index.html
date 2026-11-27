@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="contour.js" defer></script>
     <script src="modular.js" defer></script>
+    <script src="triangular.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -65,6 +66,10 @@
           <span class="gallery-art"><img alt="" id="gallery-modular"></span>
           <span class="gallery-card-details"><span><strong>Modular composition</strong><small>Repeating grids and layered intersections</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
         </button>
+        <button class="gallery-card" type="button" data-design="triangular">
+          <span class="gallery-art"><img alt="" id="gallery-triangular"></span>
+          <span class="gallery-card-details"><span><strong>Triangular composition</strong><small>Directional patterns and negative space</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
+        </button>
         <div class="gallery-card is-unavailable">
           <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><g fill="none" stroke="#a7a8a9" stroke-width="34"><circle cx="0" cy="600" r="490"/><circle cx="0" cy="600" r="425"/><circle cx="0" cy="600" r="360"/><circle cx="0" cy="600" r="295"/></g></svg></span>
           <span class="gallery-card-details"><span><strong>Cropped composition</strong><small>Oversized shapes and negative space</small></span><span class="coming-soon">Coming soon</span></span>
@@ -74,7 +79,7 @@
     </main>
     <main id="main" class="layout" hidden>
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option value="modular">Modular composition</option><option disabled>Cropped · coming soon</option></select></h1>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option value="modular">Modular composition</option><option value="triangular">Triangular composition</option><option disabled>Cropped · coming soon</option></select></h1>
         <p id="intro-description">Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
@@ -96,6 +101,7 @@
           <div class="editor-tabs" role="tablist" aria-label="Control panels">
             <button id="design-controls-tab" class="editor-tab" type="button" role="tab" aria-selected="true" aria-controls="design-controls-panel" tabindex="0">Design controls</button>
             <button id="group-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="group-editor-panel" tabindex="-1">Group editor</button>
+            <button id="triangle-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="triangle-editor-panel" tabindex="-1" hidden>Triangle editor</button>
             <button id="module-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="module-editor-panel" tabindex="-1" hidden>Module editor</button>
             <button id="layer-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="layer-editor-panel" tabindex="-1" hidden>Layer editor</button>
             <button id="line-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="line-editor-panel" tabindex="-1" hidden>Line editor</button>
@@ -153,6 +159,20 @@
             <div class="control-group"><div class="control-label"><label for="modular-layers">Layers</label><output id="modular-layers-output">2 </output></div><input id="modular-layers" type="range" min="1" max="2" value="2" step="1"></div>
             <p class="control-help">Adjust layer positions in the Layer editor. Each grid keeps consistent module sizes and spacing.</p>
             <button type="button" class="reset-position-button" id="reference-modular"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
+          </div>
+          <div id="triangular-controls" hidden>
+            <h3 class="control-section-title">Composition</h3>
+            <div class="control-group"><label for="triangle-arrangement">Arrangement</label><select id="triangle-arrangement" class="arrangement-select"><option value="uniform">Uniform</option><option value="rows">Alternating rows</option><option value="columns">Alternating columns</option><option value="checkerboard">Checkerboard</option><option value="pinwheel">Pinwheel</option><option value="mirrored">Mirrored</option></select></div>
+            <div class="control-group"><label for="triangle-orientation">Orientation</label><select id="triangle-orientation" class="arrangement-select"><option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option><option value="top-left">Top left</option><option value="top-right">Top right</option></select></div>
+            <div class="control-group"><label for="triangle-anchor">Anchor</label><select id="triangle-anchor" class="arrangement-select"><option value="corner">Right-angle corner</option><option value="centre">Centre</option></select></div>
+            <div class="control-group"><div class="control-label"><label for="triangle-columns">Columns</label><output id="triangle-columns-output">3</output></div><input id="triangle-columns" type="range" min="2" max="12" value="3" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="triangle-rows">Rows</label><output id="triangle-rows-output">3</output></div><input id="triangle-rows" type="range" min="2" max="12" value="3" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="triangle-ratio">Width to height</label><output id="triangle-ratio-output">100%</output></div><input id="triangle-ratio" type="range" min="50" max="200" value="100" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="triangle-size">Triangle scale</label><output id="triangle-size-output">100%</output></div><input id="triangle-size" type="range" min="10" max="100" value="100" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="triangle-gap-x">Horizontal spacing</label><output id="triangle-gap-x-output">0px</output></div><input id="triangle-gap-x" type="range" min="0" max="40" value="0" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="triangle-gap-y">Vertical spacing</label><output id="triangle-gap-y-output">0px</output></div><input id="triangle-gap-y" type="range" min="0" max="40" value="0" step="1"></div>
+            <p class="control-help">All triangles share the same proportions and remain inside their grid cells.</p>
+            <button type="button" class="reset-position-button" id="reference-triangular"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
           </div>
           <fieldset class="overlap-mode-control">
             <legend>Overlap treatment</legend>
@@ -249,6 +269,16 @@
               <label class="position-axis" for="modular-layer-x"><span>Horizontal offset</span><output id="modular-layer-x-output"></output></label><input id="modular-layer-x" type="range" min="-300" max="300" value="0" step="1">
               <label class="position-axis" for="modular-layer-y"><span>Vertical offset</span><output id="modular-layer-y-output"></output></label><input id="modular-layer-y" type="range" min="-300" max="300" value="0" step="1">
               <label class="position-axis" for="modular-layer-opacity"><span>Opacity</span><output id="modular-layer-opacity-output"></output></label><input id="modular-layer-opacity" type="range" min="0" max="100" value="100" step="1">
+            </div>
+          </section>
+          <section id="triangle-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="triangle-editor-tab" hidden>
+            <p class="group-panel-help">Select a triangle to change its colour, size or visibility. All triangles retain their proportions.</p>
+            <div id="triangle-default-list" class="palette-swatches"></div>
+            <div class="control-label"><strong>Individual triangles</strong><output id="triangle-selected-cell"></output></div>
+            <div id="triangle-grid" class="modular-grid" aria-label="Triangle colour grid"></div>
+            <div class="modular-layer-controls">
+              <div class="control-label"><strong id="triangle-object-title">Triangle 1</strong><button class="reset-position-button" id="reset-triangle" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset triangle</button></div>
+              <label class="position-axis" for="triangle-object-size"><span>Individual scale</span><output id="triangle-object-size-output"></output></label><input id="triangle-object-size" type="range" min="10" max="100" value="100" step="1">
             </div>
           </section>
         </aside>
