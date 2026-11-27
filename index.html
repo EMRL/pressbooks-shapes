@@ -63,6 +63,10 @@
           <span class="gallery-art"><img alt="" id="gallery-contour"></span>
           <span class="gallery-card-details"><span><strong>Contour composition</strong><small>Parallel lines and geometric rhythm</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
         </button>
+        <button class="gallery-card" type="button" data-design="orbital">
+          <span class="gallery-art"><img alt="" id="gallery-orbital"></span>
+          <span class="gallery-card-details"><span><strong>Orbital composition</strong><small>Circular outlines and rhythmic displacement</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
+        </button>
         <button class="gallery-card" type="button" data-design="modular">
           <span class="gallery-art"><img alt="" id="gallery-modular"></span>
           <span class="gallery-card-details"><span><strong>Modular composition</strong><small>Repeating grids and layered intersections</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
@@ -71,20 +75,12 @@
           <span class="gallery-art"><img alt="" id="gallery-triangular"></span>
           <span class="gallery-card-details"><span><strong>Triangular composition</strong><small>Directional patterns and negative space</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
         </button>
-        <button class="gallery-card" type="button" data-design="orbital">
-          <span class="gallery-art"><img alt="" id="gallery-orbital"></span>
-          <span class="gallery-card-details"><span><strong>Orbital composition</strong><small>Circular outlines and rhythmic displacement</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
-        </button>
-        <div class="gallery-card is-unavailable">
-          <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><g fill="none" stroke="#a7a8a9" stroke-width="34"><circle cx="0" cy="600" r="490"/><circle cx="0" cy="600" r="425"/><circle cx="0" cy="600" r="360"/><circle cx="0" cy="600" r="295"/></g></svg></span>
-          <span class="gallery-card-details"><span><strong>Cropped composition</strong><small>Oversized shapes and negative space</small></span><span class="coming-soon">Coming soon</span></span>
-        </div>
       </div>
       <footer class="page-footer"><span>Pressbooks Shapes</span><span>Composition library</span></footer>
     </main>
     <main id="main" class="layout" hidden>
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option value="modular">Modular composition</option><option value="triangular">Triangular composition</option><option value="orbital">Orbital composition</option><option disabled>Cropped · coming soon</option></select></h1>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option value="orbital">Orbital composition</option><option value="modular">Modular composition</option><option value="triangular">Triangular composition</option></select></h1>
         <p id="intro-description">Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
@@ -278,7 +274,7 @@
               <label class="position-axis" for="modular-layer-opacity"><span>Opacity</span><output id="modular-layer-opacity-output"></output></label><input id="modular-layer-opacity" type="range" min="0" max="100" value="100" step="1">
             </div>
           </section>
-          <section id="orbital-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="orbital-editor-tab" hidden><p class="group-panel-help">Select a circle to change its colour, position, size or visibility.</p><h3 class="control-section-title">Default group colours</h3><div id="orbital-group-list" class="palette-swatches"></div><h3 class="control-section-title">Individual circles</h3><div id="orbital-list" class="palette-swatches orbital-list"></div><div class="modular-layer-controls"><div class="control-label"><strong id="orbital-object-title">Circle 1</strong><button id="reset-orbital" class="reset-position-button" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div><div class="control-group"><div class="control-label"><label for="orbital-object-x">Horizontal</label><output id="orbital-object-x-output"></output></div><input id="orbital-object-x" type="range" min="-300" max="300" value="0" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-object-y">Vertical</label><output id="orbital-object-y-output"></output></div><input id="orbital-object-y" type="range" min="-300" max="300" value="0" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-object-size">Diameter scale</label><output id="orbital-object-size-output"></output></div><input id="orbital-object-size" type="range" min="25" max="200" value="100" step="1"></div></div></section>
+          <section id="orbital-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="orbital-editor-tab" hidden><p class="group-panel-help">Select a circle to change its colour, position, size or visibility. Other circles are dimmed while editing.</p><h3 class="control-section-title">Default group colours</h3><div id="orbital-group-list" class="palette-swatches"></div><h3 class="control-section-title">Individual circles</h3><div id="orbital-list" class="palette-swatches orbital-list"></div><div class="modular-layer-controls"><div class="control-label"><div class="orbital-navigation"><button type="button" id="orbital-prev" class="orbital-nav-button" aria-label="Previous circle" title="Previous circle"><i class="ph-light ph-caret-left" aria-hidden="true"></i></button><strong id="orbital-object-title" aria-live="polite">Circle 1</strong><button type="button" id="orbital-next" class="orbital-nav-button" aria-label="Next circle" title="Next circle"><i class="ph-light ph-caret-right" aria-hidden="true"></i></button></div><button id="reset-orbital" class="reset-position-button" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div><div class="control-group"><div class="control-label"><label for="orbital-object-x">Horizontal</label><output id="orbital-object-x-output"></output></div><input id="orbital-object-x" type="range" min="-300" max="300" value="0" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-object-y">Vertical</label><output id="orbital-object-y-output"></output></div><input id="orbital-object-y" type="range" min="-300" max="300" value="0" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-object-size">Diameter scale</label><output id="orbital-object-size-output"></output></div><input id="orbital-object-size" type="range" min="25" max="200" value="100" step="1"></div></div></section>
           <section id="triangle-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="triangle-editor-tab" hidden>
             <p class="group-panel-help">Select a triangle to change its colour, size or visibility. All triangles retain their proportions.</p>
             <div id="triangle-default-list" class="palette-swatches"></div>

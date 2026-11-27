@@ -304,6 +304,8 @@ function activateEditorTab(tab, moveFocus) {
     const panel = document.getElementById(item.getAttribute("aria-controls"));
     panel.hidden = !selected;
   });
+  hoveredOrbit=null;
+  updateOrbitalHighlight();
   if (moveFocus) tab.focus();
 }
 
@@ -1143,7 +1145,7 @@ function updatePreviewFrame() {
     if(root){
       const inverse=root.inverse();
       for(const shape of art.querySelectorAll("path,rect,circle,polygon")){
-        if(shape.closest("defs,mask,clipPath,pattern"))continue;
+        if(shape.closest("defs,mask,clipPath,pattern,[data-editor-only]"))continue;
         if(shape.parentNode===art && shape.tagName.toLowerCase()==="rect" && shape.getAttribute("width")==="600" && shape.getAttribute("height")==="600")continue;
         const matrix=shape.getCTM();if(!matrix)continue;
         const m=inverse.multiply(matrix), b=shape.getBBox(), stroke=Number(shape.getAttribute("stroke-width")||0)/2;
@@ -1179,6 +1181,7 @@ function buildExportSvg() {
   updatePreviewFrame();
   const settings = readSettings();
   const clone = preview.cloneNode(true);
+  stripOrbitalEditorDecoration(clone);
   clone.querySelector("#shape-title")?.remove();
   clone.querySelector("#shape-desc")?.remove();
   clone.setAttribute("xmlns", SVG_NS);
@@ -2270,6 +2273,7 @@ function updateGalleryThumbnail(type) {
   svg.setAttribute("xmlns", SVG_NS);
   svg.setAttribute("viewBox", "0 0 600 600");
   const artwork = art.cloneNode(true);
+  stripOrbitalEditorDecoration(artwork);
   artwork.removeAttribute("id");
   Array.from(artwork.children).filter(e=>e.tagName.toLowerCase()==="rect" && e.getAttribute("width")==="600" && e.getAttribute("height")==="600").forEach(e=>e.style.removeProperty("display"));
   artwork.querySelectorAll("[tabindex], [role], [aria-label], .is-selected").forEach(function (element) {

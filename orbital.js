@@ -3,12 +3,13 @@ const ORBITAL_MODES = ["concentric","drift","orbit","spiral","cluster","scatter"
 const orbitalLimits = {count:[2,60],diameter:[40,800],inner:[5,95],weight:[1,40],progression:[-90,90],displacement:[0,300],angle:[0,359],variation:[0,100],groups:[1,6]};
 let orbitalState = referenceOrbitalState();
 let activeOrbit = 0;
+let hoveredOrbit = null;
 function referenceOrbitalState(){
   return {arrangement:"drift",count:18,diameter:600,inner:35,weight:9,progression:65,displacement:55,angle:35,variation:12,groups:2,
     colours:["#25282a","#bb2026","#5da3b2","#f4af23","#00a47d","#a7a8a9"],objects:{}};
 }
 function orbitalClone(){return JSON.parse(JSON.stringify(orbitalState));}
-function restoreOrbitalState(state){orbitalState=JSON.parse(JSON.stringify(state));activeOrbit=0;}
+function restoreOrbitalState(state){orbitalState=JSON.parse(JSON.stringify(state));activeOrbit=0;hoveredOrbit=null;}
 function orbitalObject(state,i){return state.objects[i] || {};}
 function orbitalColour(i){if(String(i).startsWith("group:")) return orbitalState.colours[Number(i.split(":")[1])];return orbitalObject(orbitalState,i).colour || orbitalState.colours[i%orbitalState.groups];}
 function orbitalOverride(i){return orbitalState.objects[i] ||= {};}
@@ -27,9 +28,11 @@ function orbitalGeometry(s,i,seed){
 }
 function renderOrbital(settings){
   const s=orbitalState;
+  hoveredOrbit=null;
   art.replaceChildren();art.removeAttribute("transform");art.style.isolation="isolate";
   if(settings.background){const bg=document.createElementNS(SVG_NS,"rect");bg.setAttribute("width","600");bg.setAttribute("height","600");bg.setAttribute("fill","#fff");art.append(bg);}
   const g=document.createElementNS(SVG_NS,"g");g.setAttribute("transform","translate(300 300) rotate("+settings.rotation+") scale("+settings.scale+") translate(-300 -300)");
+  g.dataset.orbitalGeometry = "";
   const shapes=[];
   for(let i=0;i<s.count;i++){
     const o=orbitalGeometry(s,i,compositionSeed);if(!o.visible)continue;
@@ -37,8 +40,8 @@ function renderOrbital(settings){
     for(const [key,value] of Object.entries({cx:o.x,cy:o.y,r:o.r,fill:"none",stroke:o.colour,"stroke-width":o.weight}))circle.setAttribute(key,value);
     if(settings.overlapMode==="multiply")circle.style.mixBlendMode="multiply";
     circle.setAttribute("role","button");circle.setAttribute("tabindex","0");circle.setAttribute("aria-label","Circle "+(i+1));
-    const select=()=>{activeOrbit=i;activateEditorTab(document.querySelector("#orbital-editor-tab"),false);render();};
-    circle.addEventListener("click",select);circle.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select();}});
+    circle.dataset.orbitalIndex=i;
+    circle.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();selectOrbitalCircle(i,true);}});
     shapes.push(circle);g.append(circle);
   }
   if(settings.overlapMode==="transparent"){
@@ -47,7 +50,7 @@ function renderOrbital(settings){
       const mask=document.createElementNS(SVG_NS,"mask");mask.id="orbital-mask-"+i;
       for(const [k,v] of Object.entries({maskUnits:"userSpaceOnUse",x:-4000,y:-4000,width:8000,height:8000}))mask.setAttribute(k,v);
       const white=document.createElementNS(SVG_NS,"rect");for(const [k,v] of Object.entries({x:-4000,y:-4000,width:8000,height:8000,fill:"white"}))white.setAttribute(k,v);mask.append(white);
-      shapes.forEach((other,j)=>{if(i===j)return;const cut=other.cloneNode();cut.setAttribute("stroke","black");cut.removeAttribute("mask");cut.removeAttribute("style");mask.append(cut);});
+      shapes.forEach((other,j)=>{if(i===j)return;const cut=other.cloneNode();cut.setAttribute("stroke","black");cut.removeAttribute("mask");cut.removeAttribute("style");cut.removeAttribute("data-orbital-index");cut.removeAttribute("role");cut.removeAttribute("tabindex");cut.removeAttribute("aria-label");mask.append(cut);});
       defs.append(mask);circle.setAttribute("mask","url(#"+mask.id+")");
     });art.append(defs);
   }
@@ -59,7 +62,7 @@ function renderOrbital(settings){
   document.querySelector("#orbital-arrangement").value=s.arrangement;
   Object.keys(orbitalLimits).forEach(key=>{document.querySelector("#orbital-"+key).value=s[key];document.querySelector("#orbital-"+key+"-output").value=s[key]+(["diameter","weight","displacement"].includes(key)?" px":["inner","progression","variation"].includes(key)?"%":key==="angle"?"°":"");});
   outputs.scale.value=Math.round(settings.scale*100)+"%";outputs.rotation.value=settings.rotation+"°";
-  renderOrbitalEditor();refreshRangeInputs();
+  renderOrbitalEditor();refreshRangeInputs();updateOrbitalHighlight();
 }
 function renderOrbitalEditor(){
   activeOrbit=Math.min(activeOrbit,orbitalState.count-1);
@@ -72,16 +75,93 @@ function renderOrbitalEditor(){
   }
   const list=document.querySelector("#orbital-list");list.replaceChildren();
   for(let i=0;i<orbitalState.count;i++){
-    const item=createObjectSelector(i,"Circle "+(i+1),()=>{closePalette(false);activeOrbit=i;render();},button=>openPalette(button,"orbital",i),visible=>{orbitalOverride(i).visible=visible;render();});
+    const item=createObjectSelector(i,"Circle "+(i+1),()=>{closePalette(false);selectOrbitalCircle(i);},button=>{selectOrbitalCircle(i);openPalette(button,"orbital",i);},visible=>{activeOrbit=i;orbitalOverride(i).visible=visible;render();});
     item.colour.dataset.orbitalColour=i;
+    item.card.dataset.orbitalCard=i;
+    item.card.addEventListener("pointerenter",()=>{hoveredOrbit=i;updateOrbitalHighlight();});
+    item.card.addEventListener("pointerleave",()=>{hoveredOrbit=null;updateOrbitalHighlight();});
     updateObjectSelector(item,"Circle "+(i+1),orbitalColour(i),orbitalObject(orbitalState,i).visible!==false,i===activeOrbit);
     list.append(item.card);
   }
+  updateOrbitalSelectionControls();
+}
+function updateOrbitalSelectionControls(){
   const o=orbitalObject(orbitalState,activeOrbit);
-  document.querySelector("#orbital-object-title").textContent="Circle "+(activeOrbit+1);
+  document.querySelector("#orbital-object-title").textContent="Circle "+(activeOrbit+1)+" of "+orbitalState.count+(o.visible===false?" (hidden)":"");
   for(const key of ["x","y","size"]){const value=o[key]??(key==="size"?100:0);document.querySelector("#orbital-object-"+key).value=value;document.querySelector("#orbital-object-"+key+"-output").value=value+(key==="size"?"%":" px");}
 }
+// Keep preview highlights separate from the rendered composition and masks.
+function updateOrbitalHighlight(){
+  const editing=designTypeSelect.value==="orbital" && document.querySelector("#orbital-editor-tab").getAttribute("aria-selected")==="true";
+  preview.classList.toggle("orbital-editing",editing);
+  const geometry=art.querySelector("[data-orbital-geometry]");
+  if(!geometry)return;
+  geometry.querySelectorAll("[data-editor-only]").forEach(e=>e.remove());
+  const index=hoveredOrbit??activeOrbit;
+  const circles=geometry.querySelectorAll("[data-orbital-index]");
+  circles.forEach(circle=>circle.classList.toggle("orbital-highlighted",editing&&Number(circle.dataset.orbitalIndex)===index));
+  if(!editing)return;
+  const selected=geometry.querySelector('[data-orbital-index="'+index+'"]');
+  if(!selected)return;
+  // The overlay keeps the highlighted circle visible even where a transparent
+  // overlap mask or another circle would otherwise conceal its stroke.
+  const overlay=selected.cloneNode(false);
+  overlay.removeAttribute("data-orbital-index");
+  overlay.removeAttribute("mask");
+  overlay.removeAttribute("role");
+  overlay.removeAttribute("tabindex");
+  overlay.removeAttribute("aria-label");
+  overlay.removeAttribute("style");
+  overlay.setAttribute("class","orbital-focus-outline");
+  overlay.setAttribute("data-editor-only","");
+  overlay.setAttribute("aria-hidden","true");
+  overlay.setAttribute("pointer-events","none");
+  geometry.append(overlay);
+}
+function selectOrbitalCircle(index,openEditor=false){
+  activeOrbit=(index+orbitalState.count)%orbitalState.count;
+  hoveredOrbit=null;
+  if(openEditor)activateEditorTab(document.querySelector("#orbital-editor-tab"),false);
+  document.querySelectorAll("[data-orbital-card]").forEach(card=>{
+    const active=Number(card.dataset.orbitalCard)===activeOrbit;
+    card.classList.toggle("is-active",active);
+    card.querySelector(".object-selector-select").setAttribute("aria-pressed",String(active));
+    if(active){
+      const list=card.parentElement;
+      const listRect=list.getBoundingClientRect(), cardRect=card.getBoundingClientRect();
+      if(cardRect.top<listRect.top)list.scrollTop+=cardRect.top-listRect.top;
+      else if(cardRect.bottom>listRect.bottom)list.scrollTop+=cardRect.bottom-listRect.bottom;
+    }
+  });
+  updateOrbitalSelectionControls();
+  refreshRangeInputs();
+  updateOrbitalHighlight();
+}
+function selectOrbitalAtPoint(event){
+  if(designTypeSelect.value!=="orbital" || event.detail===0)return;
+  const geometry=art.querySelector("[data-orbital-geometry]");
+  const matrix=geometry?.getScreenCTM();if(!matrix)return;
+  const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
+  const scale=Math.hypot(matrix.a,matrix.b);
+  if(!scale)return;
+  let best=null,bestDistance=Infinity;
+  geometry.querySelectorAll("[data-orbital-index]").forEach(circle=>{
+    const distance=Math.abs(Math.hypot(point.x-Number(circle.getAttribute("cx")),point.y-Number(circle.getAttribute("cy")))-Number(circle.getAttribute("r")));
+    // Use an eight-screen-pixel tolerance, independent of zoom or stroke width.
+    const tolerance=Math.max(8/scale,Number(circle.getAttribute("stroke-width"))/2);
+    if(distance<=tolerance && distance<bestDistance){best=Number(circle.dataset.orbitalIndex);bestDistance=distance;}
+  });
+  if(best!==null){closePalette(false);selectOrbitalCircle(best,true);}
+}
+function stripOrbitalEditorDecoration(root){
+  root.classList.remove("orbital-editing");
+  root.querySelectorAll("[data-editor-only]").forEach(e=>e.remove());
+  root.querySelectorAll(".orbital-highlighted").forEach(e=>e.classList.remove("orbital-highlighted"));
+}
 function initOrbital(){
+  preview.addEventListener("click",selectOrbitalAtPoint);
+  document.querySelector("#orbital-prev").addEventListener("click",()=>{closePalette(false);selectOrbitalCircle(activeOrbit-1);});
+  document.querySelector("#orbital-next").addEventListener("click",()=>{closePalette(false);selectOrbitalCircle(activeOrbit+1);});
   Object.keys(orbitalLimits).forEach(key=>document.querySelector("#orbital-"+key).addEventListener("input",e=>{closePalette(false);orbitalState[key]=Number(e.target.value);render();}));
   document.querySelector("#orbital-arrangement").addEventListener("change",e=>{orbitalState.arrangement=e.target.value;render();});
   for(const key of ["x","y","size"])document.querySelector("#orbital-object-"+key).addEventListener("input",e=>{orbitalOverride(activeOrbit)[key]=Number(e.target.value);render();});
