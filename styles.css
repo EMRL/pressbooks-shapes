@@ -265,3 +265,12 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 #contour-controls .arrangement-select { margin-top: 6px; }
 #reference-contour { margin: 8px 0 16px; }
 #contour-accent-controls .position-axis { margin-top: 12px; }
+
+#modular-controls label, #module-editor-panel label { font-size: 12px; }
+#modular-controls .arrangement-select, #module-editor-panel .arrangement-select { margin-top: 6px; }
+#reference-modular { margin: 8px 0 16px; }
+.modular-grid { display: grid; gap: 4px; }
+.modular-grid .segment-grid-row { grid-template-columns: 24px repeat(var(--modular-columns), minmax(0, 1fr)); }
+.modular-grid .segment-cell { min-width: 0; }
+.modular-layer-controls { margin-top: 16px; }
+.modular-layer-controls .position-axis { margin-top: 12px; }
