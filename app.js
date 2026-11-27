@@ -495,7 +495,7 @@ function choosePaletteColour(hex, pattern = null) {
   const target = paletteTarget;
   if (patternMode === "pattern" && !pattern && patternEligible(target)) {
     patternDraft[patternColourTarget] = hex;
-    refreshPatternEditor();
+    commitPatternDraft();
     return;
   }
   if (patternEligible(target)) {
@@ -516,31 +516,32 @@ function choosePaletteColour(hex, pattern = null) {
     cellColors.set(cellKey(target.ring, target.segment), hex.toUpperCase());
     emptyCells.delete(cellKey(target.ring, target.segment));
   }
-  closePalette(false);
+  // Keep the fill popover open while rendering the changed artwork. Several
+  // editors rebuild their swatches during render, so bind the replacement.
   render();
-  if (target.type === "triangular") {
-    trianglePaletteTrigger(target.index)?.focus();
-  } else if (target.type === "modular") {
-    modularPaletteTrigger(target.index)?.focus();
-  } else if (target.type === "contour") {
-    (target.index === "default" ? document.querySelector("#contour-default-colour") : document.querySelector('[data-contour-colour="' + target.index + '"]'))?.focus();
-  } else if (target.type === "cell") {
-    segmentGrid.querySelector('.segment-cell[aria-pressed="true"]')?.focus();
-  } else if (target.type === "group") {
-    groupPaletteButtons[target.index]?.focus();
-  } else {
-    controls.dotColor.focus();
+  refreshLivePalette(target);
+  if (patternMode === "solid") {
+    if (patternDraft) patternDraft.foreground = hex;
+    highlightPatternColour(hex);
   }
 }
 
-function openPalette(trigger, type, index) {
-  if (paletteTarget && paletteTarget.trigger === trigger) {
-    closePalette(false);
-    return;
-  }
-  closePalette(false);
-  paletteTarget = { trigger, type, index, ring: selectedCell.ring, segment: selectedCell.segment };
-  trigger.setAttribute("aria-expanded", "true");
+function refreshLivePalette(target) {
+  let trigger;
+  if (target.type === "triangular") trigger = trianglePaletteTrigger(target.index);
+  else if (target.type === "modular") trigger = modularPaletteTrigger(target.index);
+  else if (target.type === "contour") trigger = target.index === "default" ? document.querySelector("#contour-default-colour") : document.querySelector('[data-contour-colour="' + target.index + '"]');
+  else if (target.type === "cell") trigger = segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
+  else if (target.type === "group") trigger = groupPaletteButtons[target.index];
+  else trigger = controls.dotColor;
+  if (!trigger) { closePalette(false); return; }
+  target.trigger = trigger;
+  trigger.setAttribute("aria-expanded","true");
+  configurePaletteActions(target.type,target.index);
+  positionPalette();
+}
+
+function configurePaletteActions(type,index) {
   sectionPaletteActions.hidden = type === "dot" || type === "contour" || (type === "modular" && index.startsWith("layer:")) || (type === "triangular" && index === "default");
   if (type === "triangular" && index !== "default") {
     const state = trianglePaletteState(index);
@@ -572,6 +573,17 @@ function openPalette(trigger, type, index) {
     paletteActions.emptyLabel.textContent = designTypeSelect.value === "concentric" ? "Empty entire group" : "Empty " + objectName();
     paletteActions.reset.textContent = "Reset colour";
   }
+}
+
+function openPalette(trigger, type, index) {
+  if (paletteTarget && paletteTarget.trigger === trigger) {
+    closePalette(false);
+    return;
+  }
+  closePalette(false);
+  paletteTarget = { trigger, type, index, ring: selectedCell.ring, segment: selectedCell.segment };
+  trigger.setAttribute("aria-expanded", "true");
+  configurePaletteActions(type,index);
   const selected = targetColour(paletteTarget).toUpperCase();
   paletteGrid.replaceChildren();
   BRAND_PALETTE.forEach(function (family) {

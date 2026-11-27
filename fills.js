@@ -115,7 +115,6 @@ function showFillMode(mode){
   document.querySelector("#solid-fill-tab").setAttribute("aria-pressed",String(mode==="solid"));
   document.querySelector("#pattern-fill-tab").setAttribute("aria-pressed",String(mode==="pattern"));
   document.querySelector("#pattern-fill-controls").hidden=mode!=="pattern";
-  document.querySelector("#apply-pattern-fill").hidden=mode!=="pattern";
   if(mode==="pattern")refreshPatternEditor();
   else if(paletteTarget)highlightPatternColour(targetColour(paletteTarget));
   positionPalette();
@@ -140,7 +139,7 @@ function refreshPatternEditor(){
     const sample=document.createElement("span");
     sample.style.backgroundImage=patternImage({...p,type:id,rotation:0,spacing:10,weight:3});
     button.append(sample,document.createTextNode(name));
-    button.addEventListener("click",()=>{p.type=id;refreshPatternEditor();types.querySelector('[aria-pressed="true"]')?.focus();});
+    button.addEventListener("click",()=>{p.type=id;commitPatternDraft();types.querySelector('[aria-pressed="true"]')?.focus();});
     types.append(button);
   });
   for(const key of ["foreground","background"]){
@@ -156,19 +155,39 @@ function refreshPatternEditor(){
   highlightPatternColour(p[patternColourTarget]);
   positionPalette();
 }
+function commitPatternDraft(){
+  if(!paletteTarget||!patternEligible(paletteTarget)||!patternDraft)return;
+  choosePaletteColour(patternDraft.foreground,{...patternDraft});
+  refreshPatternEditor();
+}
 function initFillEditor(){
-  document.querySelector("#solid-fill-tab").addEventListener("click",()=>showFillMode("solid"));
-  document.querySelector("#pattern-fill-tab").addEventListener("click",()=>showFillMode("pattern"));
-  for(const key of ["foreground","background"])document.querySelector("#pattern-"+key).addEventListener("click",()=>{patternColourTarget=key;refreshPatternEditor();});
-  document.querySelector("#pattern-transparent").addEventListener("click",()=>{patternDraft.background=null;patternColourTarget="background";refreshPatternEditor();});
-  for(const key of ["spacing","weight","rotation"])document.querySelector("#pattern-"+key).addEventListener("change",event=>{
-    const value=Number(event.target.value);
-    if(Number.isFinite(value))patternDraft[key]=Math.max(Number(event.target.min),Math.min(Number(event.target.max),Math.round(value)));
-    patternDraft.weight=Math.min(patternDraft.weight,patternDraft.spacing-1);
-    refreshPatternEditor();
+  document.querySelector("#solid-fill-tab").addEventListener("click",()=>{
+    if(!paletteTarget)return;
+    const existing=resolvedPattern(patternKey(paletteTarget));
+    showFillMode("solid");
+    if(existing)choosePaletteColour(existing.foreground);
   });
-  document.querySelector("#pattern-alignment").addEventListener("change",event=>{patternDraft.alignment=event.target.value;refreshPatternEditor();});
-  document.querySelector("#apply-pattern-fill").addEventListener("click",()=>choosePaletteColour(patternDraft.foreground,{...patternDraft}));
+  document.querySelector("#pattern-fill-tab").addEventListener("click",()=>{
+    if(!paletteTarget)return;
+    showFillMode("pattern");
+    if(!resolvedPattern(patternKey(paletteTarget)))commitPatternDraft();
+  });
+  for(const key of ["foreground","background"])document.querySelector("#pattern-"+key).addEventListener("click",()=>{patternColourTarget=key;refreshPatternEditor();});
+  document.querySelector("#pattern-transparent").addEventListener("click",()=>{patternDraft.background=null;patternColourTarget="background";commitPatternDraft();});
+  for(const key of ["spacing","weight","rotation"]){
+    const input=document.querySelector("#pattern-"+key);
+    const update=(event,final)=>{
+      if(!paletteTarget||!patternDraft)return;
+      const value=Number(event.target.value);
+      if(!final&&(event.target.value===""||!Number.isFinite(value)||value<Number(input.min)||value>Number(input.max)))return;
+      if(Number.isFinite(value))patternDraft[key]=Math.max(Number(input.min),Math.min(Number(input.max),Math.round(value)));
+      patternDraft.weight=Math.min(patternDraft.weight,patternDraft.spacing-1);
+      commitPatternDraft();
+    };
+    input.addEventListener("input",event=>update(event,false));
+    input.addEventListener("change",event=>update(event,true));
+  }
+  document.querySelector("#pattern-alignment").addEventListener("change",event=>{patternDraft.alignment=event.target.value;commitPatternDraft();});
 }
 function randomCandidatePatterns(candidate){
   const result={};

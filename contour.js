@@ -109,7 +109,7 @@ function circleFitsContour(state, circle) {
 // Geometry changes preserve valid circles and try nearby positions for any
 // collision. If the original diameter cannot fit, use the best available gap.
 function fitContourCircles(state) {
-  state.circles.slice(0, state.accents).forEach((circle,index) => {
+  state.circles.slice(0, state.accents).forEach(circle => {
     if (circleFitsContour(state, circle)) return;
     let best = { x: circle.x, y: circle.y, diameter: safeContourDiameter(state, circle.x, circle.y) };
     let nearest = null;
@@ -251,7 +251,7 @@ function renderContour(settings) {
     path.setAttribute("stroke-width", state.weight);
     geometry.append(path);
   }
-  state.circles.slice(0, state.accents).forEach(circle => {
+  state.circles.slice(0, state.accents).forEach((circle,index) => {
     if (!circle.visible || !circleFitsContour(state, circle)) return;
     const el = document.createElementNS(SVG_NS, "circle");
     el.setAttribute("cx", 300 + circle.x);

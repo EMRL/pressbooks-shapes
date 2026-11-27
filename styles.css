@@ -298,7 +298,6 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 .pattern-fields label { display: grid; gap: 3px; font-size: 10px; }
 .pattern-fields input, .pattern-fields select { width: 100%; min-width: 0; height: 27px; border: 1px solid var(--light-60); border-radius: 4px; padding: 3px; background: var(--surface); font-size: 11px; }
 .pattern-preview { height: 38px; margin: 6px 0 10px; border: 1px solid var(--light-60); background-size: 100% 100%; border-radius: 4px; }
-.pattern-apply { width: 100%; margin-top: 9px; min-height: 32px; background: var(--pathways-120); color: white; border: 0; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; }
 .color-trigger.has-pattern, .color-trigger.has-pattern .color-swatch { background-color: var(--surface); background-image: var(--fill-image); background-size: 100% 100%; }
 .segment-cell.has-pattern:not(.is-empty) { background-color: var(--surface); background-image: var(--fill-image); background-size: 100% 100%; }
 #triangle-grid .segment-cell.has-pattern:not(.is-empty) { background-image: none; }
