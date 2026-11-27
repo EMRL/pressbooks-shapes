@@ -325,3 +325,8 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 .gallery-bottom-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
 #shape-preview.rhythmic-editing [data-rhythmic-index] { opacity: .3; }
 #shape-preview.rhythmic-editing [data-rhythmic-index].rhythmic-highlighted { opacity: 1; }
+
+/* Separate group palettes from individual object headings. */
+.palette-swatches + .control-section-title { margin-top: 16px; }
+#shape-preview.independent-editing path[data-ring][data-segment] { opacity: .3; }
+#shape-preview.independent-editing path[data-ring][data-segment].independent-highlighted { opacity: 1; }
