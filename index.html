@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/light/style.css">
     <link rel="stylesheet" href="styles.css">
+    <script src="contour.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -55,6 +56,10 @@
           <span class="gallery-art"><img alt="" id="gallery-interlocking"></span>
           <span class="gallery-card-details"><span><strong>Interlocking composition</strong><small>Overlaps, circles and intersections</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
         </button>
+        <button class="gallery-card" type="button" data-design="contour">
+          <span class="gallery-art"><img alt="" id="gallery-contour"></span>
+          <span class="gallery-card-details"><span><strong>Contour composition</strong><small>Parallel lines and geometric rhythm</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
+        </button>
         <div class="gallery-card is-unavailable">
           <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><circle cx="165" cy="165" r="100" fill="#a7a8a9"/><circle cx="165" cy="435" r="100" fill="#cacbcb"/><path d="M310 65H535V265Z" fill="#7c7e7f"/><path d="M310 335H535A112.5 112.5 0 0 1 310 335" fill="#a7a8a9"/></svg></span>
           <span class="gallery-card-details"><span><strong>Modular composition</strong><small>Geometric fields and intersections</small></span><span class="coming-soon">Coming soon</span></span>
@@ -68,7 +73,7 @@
     </main>
     <main id="main" class="layout" hidden>
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option></select></h1>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option></select></h1>
         <p id="intro-description">Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
@@ -90,6 +95,8 @@
           <div class="editor-tabs" role="tablist" aria-label="Control panels">
             <button id="design-controls-tab" class="editor-tab" type="button" role="tab" aria-selected="true" aria-controls="design-controls-panel" tabindex="0">Design controls</button>
             <button id="group-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="group-editor-panel" tabindex="-1">Group editor</button>
+            <button id="line-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="line-editor-panel" tabindex="-1" hidden>Line editor</button>
+            <button id="accent-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="accent-editor-panel" tabindex="-1" hidden>Circle editor</button>
           </div>
           <section id="design-controls-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="design-controls-tab">
           <div class="controls-head"><button class="surprise-button" id="surprise-me" type="button" aria-label="Surprise me"><span class="surprise-icon"><i class="ph-light ph-dice-five" aria-hidden="true"></i></span><span class="surprise-label">Surprise me</span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span><span class="surprise-particle" aria-hidden="true"></span></button></div>
@@ -117,6 +124,19 @@
             <div class="control-group"><div class="control-label"><label for="circle-arrangement">Arrangement</label></div><select id="circle-arrangement" class="arrangement-select"><option value="linear">Linear</option><option value="alternating">Alternating</option><option value="circular">Circular</option></select></div>
             <button type="button" class="reset-position-button" id="reference-circles"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
           </div>
+          <div id="contour-controls" hidden>
+            <h3 class="control-section-title">Composition</h3>
+            <div class="control-group"><label for="contour-arrangement">Arrangement</label><select id="contour-arrangement" class="arrangement-select"><option value="serpentine">Serpentine</option><option value="arch">Arch</option><option value="wave">Wave</option><option value="loop">Loop</option></select></div>
+            <div class="control-group"><label for="contour-symmetry">Symmetry</label><select id="contour-symmetry" class="arrangement-select"><option value="rotational">Rotational</option><option value="mirrored">Mirrored</option></select></div>
+            <div class="control-group" id="contour-count-row"><div class="control-label"><label for="contour-count">Lines</label><output id="contour-count-output">9 </output></div><input id="contour-count" type="range" min="2" max="20" value="9" step="1"></div>
+            <div class="control-group" id="contour-weight-row"><div class="control-label"><label for="contour-weight">Line weight</label><output id="contour-weight-output">5 px</output></div><input id="contour-weight" type="range" min="1" max="12" value="5" step="1"></div>
+            <div class="control-group" id="contour-spacing-row"><div class="control-label"><label for="contour-spacing">Line spacing</label><output id="contour-spacing-output">19 px</output></div><input id="contour-spacing" type="range" min="4" max="24" value="19" step="1"></div>
+            <div class="control-group" id="contour-radius-row"><div class="control-label"><label for="contour-radius">Curve radius</label><output id="contour-radius-output">185 px</output></div><input id="contour-radius" type="range" min="30" max="300" value="185" step="1"></div>
+            <div class="control-group" id="contour-separation-row"><div class="control-label"><label for="contour-separation">Curve separation</label><output id="contour-separation-output">0 px</output></div><input id="contour-separation" type="range" min="0" max="220" value="0" step="1"></div>
+            <div class="control-group" id="contour-accents-row"><div class="control-label"><label for="contour-accents">Accent circles</label><output id="contour-accents-output">4 </output></div><input id="contour-accents" type="range" min="0" max="6" value="4" step="1"></div>
+            <p class="control-help">Line spacing and radius adjust together to keep the contours parallel and prevent crossings.</p>
+            <button type="button" class="reset-position-button" id="reference-contour"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
+          </div>
           <fieldset class="overlap-mode-control">
             <legend>Overlap treatment</legend>
             <p id="overlap-help" class="control-help">Choose how groups interact where they cross.</p>
@@ -129,7 +149,7 @@
           <details class="advanced-controls">
             <summary>Advanced settings</summary>
             <div class="advanced-controls-body">
-              <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="100" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
+              <div class="control-group" id="variation-control"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="100" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
               <div class="control-group concentric-only"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
               <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
               <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Turn the complete design inside the artboard.</p></div>
@@ -181,6 +201,21 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </section>
+          <section id="line-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="line-editor-tab" hidden>
+            <p class="group-panel-help">Change colours or hide lines. All contours share the same geometry.</p>
+            <div class="control-label"><strong>Default line colour</strong><button class="color-trigger" id="contour-default-colour" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span class="color-swatch"></span></button></div>
+            <div id="contour-line-list" class="contour-line-list"></div>
+          </section>
+          <section id="accent-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="accent-editor-tab" hidden>
+            <p class="group-panel-help">Select an accent circle to adjust its colour, size and position.</p>
+            <div id="contour-accent-list" class="contour-accent-list"></div>
+            <div id="contour-accent-controls" hidden>
+              <div class="control-label"><strong id="contour-accent-title">Circle 1</strong><button class="reset-position-button" id="reset-contour-accent" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div>
+              <label class="position-axis" for="contour-accent-size"><span>Diameter</span><output id="contour-accent-size-output"></output></label><input id="contour-accent-size" type="range" min="10" max="350" value="100" step="1">
+              <label class="position-axis" for="contour-accent-x"><span>Horizontal</span><output id="contour-accent-x-output"></output></label><input id="contour-accent-x" type="range" min="-450" max="450" value="0" step="1">
+              <label class="position-axis" for="contour-accent-y"><span>Vertical</span><output id="contour-accent-y-output"></output></label><input id="contour-accent-y" type="range" min="-450" max="450" value="0" step="1">
             </div>
           </section>
         </aside>
