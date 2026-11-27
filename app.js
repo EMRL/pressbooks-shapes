@@ -896,7 +896,7 @@ function refreshRangeInputs() {
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
     const max = Number(input.max);
-    const percentage = ((Number(input.value) - min) / (max - min)) * 100;
+    const percentage = max === min ? 100 : ((Number(input.value) - min) / (max - min)) * 100;
     input.style.setProperty("--range-progress", percentage + "%");
     const number = rangeNumbers.get(input.id);
     if (number && document.activeElement !== number) number.value = input.value;
