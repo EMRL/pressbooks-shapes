@@ -206,7 +206,10 @@ function setDesignType(type, saveCurrent, restoreTarget) {
     return;
   }
   const currentType = activeDesignType;
-  if (saveCurrent !== false) designSnapshots[currentType] = captureDesignState();
+  if (saveCurrent !== false) {
+    designSnapshots[currentType] = captureDesignState();
+    if (!document.querySelector("#main").hidden) updateGalleryThumbnail(currentType);
+  }
   designTypeSelect.value = type;
   activeDesignType = type;
   if (restoreTarget !== false && designSnapshots[type]) {
@@ -1164,6 +1167,7 @@ async function importPresetFile(file) {
   try {
     const payload = validatePresetPayload(JSON.parse(await file.text()));
     applyPresetPayload(payload);
+    showEditor(payload.designType);
     showPresetNotice("Preset imported. The current composition has been replaced.", false);
   } catch (error) {
     showPresetNotice(error instanceof SyntaxError ? "This file is not valid JSON." : error.message, true);
@@ -1172,8 +1176,8 @@ async function importPresetFile(file) {
   document.querySelector("#preset-menu-toggle").focus();
 }
 
-function createSurpriseCandidate() {
-  if (designTypeSelect.value === "radiating") return createRadiatingCandidate();
+function createSurpriseCandidate(type = designTypeSelect.value) {
+  if (type === "radiating") return createRadiatingCandidate();
   const rings = randomInteger(3, 8);
   const segments = randomInteger(2, 8);
   const settings = {
@@ -1585,17 +1589,21 @@ function applySurpriseCandidate(candidate) {
   render();
 }
 
+function harmoniousComposition(type) {
+  return chooseHarmoniousCandidate(
+    function () { return createSurpriseCandidate(type); },
+    type === "radiating" ? evaluateRadiatingCandidate : evaluateConcentricCandidate,
+    16,
+    0.72
+  );
+}
+
 function generateSurprise() {
   closePalette(false);
   pendingGroupIndex = null;
   groupInspector.classList.remove("is-fading-out");
   const radiating = designTypeSelect.value === "radiating";
-  const candidate = chooseHarmoniousCandidate(
-    createSurpriseCandidate,
-    radiating ? evaluateRadiatingCandidate : evaluateConcentricCandidate,
-    16,
-    0.72
-  );
+  const candidate = harmoniousComposition(designTypeSelect.value);
   applySurpriseCandidate(candidate);
   const settings = candidate.settings;
   document.querySelector("#surprise-status").textContent = radiating
@@ -1720,6 +1728,102 @@ groupInspector.addEventListener("transitionend", function (event) {
   render();
   groupInspector.classList.remove("is-fading-out");
 });
-designTypeSelect.addEventListener("change", function () { setDesignType(designTypeSelect.value, true, true); });
+const homeScreen = document.querySelector("#home");
+const editorScreen = document.querySelector("#main");
+const homeButton = document.querySelector("#home-button");
+const galleryTypes = Array.from(document.querySelectorAll(".gallery-card[data-design]"), function (card) { return card.dataset.design; });
+
+function updateGalleryThumbnail(type) {
+  // Copy the rendered SVG into an isolated image so mask IDs cannot collide
+  // with the editor or another thumbnail.
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("xmlns", SVG_NS);
+  svg.setAttribute("viewBox", "0 0 600 600");
+  const artwork = art.cloneNode(true);
+  artwork.removeAttribute("id");
+  artwork.querySelectorAll("[tabindex], [role], [aria-label], .is-selected").forEach(function (element) {
+    element.removeAttribute("tabindex");
+    element.removeAttribute("role");
+    element.removeAttribute("aria-label");
+    element.classList.remove("is-selected");
+  });
+  svg.append(artwork);
+  const source = new XMLSerializer().serializeToString(svg);
+  document.querySelector("#gallery-" + type).src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+}
+
+function shuffleGallery(announce = true) {
+  closePalette(false);
+  const initialType = activeDesignType;
+  // The editor is hidden during generation. Use the exact existing renderer
+  // and persist the complete resulting state, including the seed.
+  galleryTypes.forEach(function (type) {
+    setDesignType(type, true, true);
+    applySurpriseCandidate(harmoniousComposition(type));
+    designSnapshots[type] = captureDesignState();
+    updateGalleryThumbnail(type);
+  });
+  setDesignType(initialType, true, true);
+  document.title = "Pressbooks Shapes · Create a composition";
+  if (announce) document.querySelector("#surprise-status").textContent = "New gallery compositions generated.";
+}
+
+function updateScreen(editor) {
+  homeScreen.hidden = editor;
+  editorScreen.hidden = !editor;
+  homeButton.hidden = !editor;
+  document.querySelector("#download-svg").hidden = !editor;
+  document.querySelector("#export-settings").hidden = !editor;
+  presetMenu.open = false;
+}
+
+function navigateTo(hash, replace = false) {
+  if (window.location.hash === hash) return;
+  window.history[replace ? "replaceState" : "pushState"](null, "", hash);
+}
+
+function showHome(changeHistory = true) {
+  if (!editorScreen.hidden) {
+    closePalette(false);
+    designSnapshots[activeDesignType] = captureDesignState();
+    updateGalleryThumbnail(activeDesignType);
+  }
+  updateScreen(false);
+  document.title = "Pressbooks Shapes · Create a composition";
+  if (changeHistory) navigateTo("#home");
+  document.querySelector("#gallery-title").focus();
+}
+
+function showEditor(type, changeHistory = true) {
+  setDesignType(type, true, true);
+  updateScreen(true);
+  updateDesignChrome();
+  render();
+  if (changeHistory) navigateTo("#editor/" + type);
+  activateEditorTab(editorTabs[0], false);
+  designTypeSelect.focus();
+}
+
+document.querySelector(".brand").addEventListener("click", function (event) {
+  event.preventDefault();
+  showHome();
+});
+homeButton.addEventListener("click", function () { showHome(); });
+document.querySelector("#shuffle-gallery").addEventListener("click", function () { shuffleGallery(); });
+document.querySelectorAll(".gallery-card[data-design]").forEach(function (card) {
+  card.addEventListener("click", function () { showEditor(card.dataset.design); });
+});
+designTypeSelect.addEventListener("change", function () {
+  setDesignType(designTypeSelect.value, true, true);
+  navigateTo("#editor/" + activeDesignType, true);
+});
+window.addEventListener("popstate", function () {
+  const type = window.location.hash.split("/")[1];
+  if (window.location.hash.startsWith("#editor/") && galleryTypes.includes(type)) showEditor(type, false);
+  else showHome(false);
+});
 updateDesignChrome();
 render();
+shuffleGallery(false);
+navigateTo("#home", true);
+updateScreen(false);
