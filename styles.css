@@ -277,7 +277,8 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 .modular-layer-controls .position-axis { margin-top: 12px; }
 
 #triangular-controls label { font-size: 12px; }
-#triangular-controls .arrangement-select { margin-top: 6px; }
+#triangular-controls .arrangement-select, #spiral-controls .arrangement-select, #rhythmic-controls .arrangement-select { margin-top: 6px; }
+#spiral-controls label, #rhythmic-controls label { font-size: 12px; }
 #reference-triangular { margin: 8px 0 16px; }
 #triangle-default-list { margin-bottom: 16px; }
 #triangle-grid .segment-cell:not(.is-empty) { background: var(--surface); position: relative; overflow: hidden; }
@@ -321,3 +322,7 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 #shape-preview.spiral-editing [data-spiral-index] { opacity: .3; }
 #shape-preview.spiral-editing [data-spiral-index].spiral-highlighted { opacity: 1; }
 #shape-preview [data-spiral-index] { cursor: pointer; }
+
+.gallery-bottom-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
+#shape-preview.rhythmic-editing [data-rhythmic-index] { opacity: .3; }
+#shape-preview.rhythmic-editing [data-rhythmic-index].rhythmic-highlighted { opacity: 1; }
