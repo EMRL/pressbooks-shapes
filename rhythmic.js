@@ -14,10 +14,87 @@ function rhythmicColour(key){
   return rhythmicState.objects[key]?.colour||rhythmicState.colours[rhythmicGroup(rhythmicState,Number(key))];
 }
 function rhythmicGroup(s,i){return Math.min(s.groups-1,Math.floor(i*s.groups/s.count));}
-function rhythmicGeometry(s){
-  const lines=[], width=600, span=width/s.fields;
+// Every field meets its neighbour at the same endpoint. The repeated
+// motif is extended beyond the crop (including rotated/scaled artboards).
+function rhythmicField(s,f,span,amplitude){
+  const left=f*span,right=left+span;
+  const sign=s.symmetry==="mirrored"&&Math.abs(f%2)===1?-1:1;
+  const a=amplitude*sign;
+  switch(s.arrangement){
+    case "zigzag": {
+      const n=s.frequency*2;
+      return Array.from({length:n+1},(_,j)=>[left+span*j/n,j%2?a:0]);
+    }
+    case "herringbone":
+      // A continuous diagonal alternates direction at each field boundary.
+      // Parallel fields use a shorter return slope rather than a flat cap.
+      return s.symmetry==="mirrored"
+        ? [[left,-a],[right,a]]
+        : [[left,-a],[left+span*.8,a],[right,-a]];
+    case "gradient": {
+      const t=Math.max(0,Math.min(1,f/Math.max(1,s.fields-1)));
+      const length=.35+.45*(s.progression<0?1-t:t);
+      return [[left,0],[left+span*(1-length)/2,-a*.5],[left+span*(1+length)/2,a*.5],[right,0]];
+    }
+    case "stepped": {
+      // Plateau runs connected by short diagonal rises, without separate
+      // subpaths or coincident vertical strokes from neighbouring lines.
+      const n=s.frequency*2,points=[[left,0]];
+      for(let j=0;j<n;j++){
+        const y=j<n/2?-a*(j+1)/(n/2):-a*(n-j-1)/(n/2);
+        const x=left+span*j/n,dx=span/n;
+        points.push([x+dx*.25,y],[x+dx,y]);
+      }
+      return points;
+    }
+    case "folded":
+      return [[left,0],[left+span*.3,-a],[left+span*.7,a],[right,0]];
+    default:
+      return [[left,0],[left+span/2,-a],[right,0]];
+  }
+}
+function rhythmicGeometry(s,settings=null){
+  const lines=[],span=600/s.fields;
   const slope=Math.tan(s.angle*Math.PI/180);
   const amplitude=Math.min(s.amplitude,span/2*slope);
+  // In the reference frame the entire original width remains present.
+  // Only add extra fields as needed to put the two actual endpoints
+  // outside the transformed square, even at minimum scale.
+  const angle=(settings?.rotation||0)*Math.PI/180;
+  const scale=settings?.scale||1;
+  const halfWidth=300*(Math.abs(Math.cos(angle))+Math.abs(Math.sin(angle)))/scale;
+  const extension=settings?Math.min(12,Math.max(0,Math.ceil((halfWidth+14-300)/span))):0;
+  const profile=[];
+  for(let f=-extension;f<s.fields+extension;f++){
+    const points=rhythmicField(s,f,span,amplitude);
+    if(profile.length){
+      const last=profile[profile.length-1],first=points[0];
+      // Floating point boundaries can differ by a fraction of a pixel.
+      // Use the previous endpoint instead of making a tiny duplicate segment.
+      if(Math.abs(last[0]-first[0])<1e-7&&Math.abs(last[1]-first[1])<1e-7)points.shift();
+    }
+    profile.push(...points);
+  }
+  if(settings&&extension){
+    // Retain only the necessary overscan, not whole extra fields.
+    const minX=Math.min(0,300-halfWidth-14),maxX=Math.max(600,300+halfWidth+14);
+    const clipped=[];
+    for(let j=1;j<profile.length;j++){
+      const [ax,ay]=profile[j-1],[bx,by]=profile[j];
+      if(bx<minX||ax>maxX||bx<=ax)continue;
+      const x1=Math.max(ax,minX),x2=Math.min(bx,maxX);
+      if(x2<=x1)continue;
+      const at=x=>[x,ay+(by-ay)*(x-ax)/(bx-ax)];
+      if(!clipped.length)clipped.push(at(x1));
+      clipped.push(at(x2));
+    }
+    profile.splice(0,profile.length,...clipped);
+  }
+  let maxSlope=0;
+  for(let j=1;j<profile.length;j++){
+    const dx=profile[j][0]-profile[j-1][0],dy=profile[j][1]-profile[j-1][1];
+    if(Math.abs(dx)>1e-7)maxSlope=Math.max(maxSlope,Math.abs(dy/dx));
+  }
   const positions=[0];let gapTotal=0;
   for(let i=1;i<s.count;i++){
     const t=(i-.5)/(s.count-1);
@@ -28,54 +105,19 @@ function rhythmicGeometry(s){
     const o=s.objects[i]||{};if(o.visible===false)continue;
     const t=i/(s.count-1),y=300+positions[i]-gapTotal/2;
     const pitch=Math.min(i>0?positions[i]-positions[i-1]:Infinity,i<s.count-1?positions[i+1]-positions[i]:Infinity);
-    const maxSlope=s.arrangement==="zigzag"?2*amplitude*s.frequency/span:s.arrangement==="folded"?amplitude/(span*.3):2*amplitude/span;
-    const clearance=s.arrangement==="stepped"?pitch:pitch/Math.hypot(1,maxSlope);
+    const clearance=pitch/Math.hypot(1,maxSlope);
     const weight=Math.min(clearance*.85,Math.max(.5,s.weight*(1+s.progression/100*(2*t-1))));
     const colour=o.colour||s.colours[rhythmicGroup(s,i)];
-    const paths=[];
-    for(let f=0;f<s.fields;f++){
-      const left=f*span,right=left+span;
-      const sign=s.symmetry==="mirrored"&&f%2?-1:1;
-      const a=amplitude*sign;
-      let points;
-      switch(s.arrangement){
-        case "zigzag": {
-          const n=s.frequency*2;
-          points=Array.from({length:n+1},(_,j)=>[left+span*j/n,y+(j%2?a:-a)*.5]);break;
-        }
-        case "herringbone": {
-          // Alternate diagonal fields while leaving a clear separation.
-          const gap=Math.min(span*.12,s.spacing*.5);
-          points=[[left+gap,y-a],[right-gap,y+a]];break;
-        }
-        case "gradient": {
-          const len=span*(.55+.45*(s.progression<0?1-t:t));
-          points=[[left+(span-len)/2,y-a*.5],[left+(span+len)/2,y+a*.5]];break;
-        }
-        case "stepped": {
-          const n=s.frequency;
-          points=[[left,y-a]];
-          for(let j=1;j<=n;j++){const x=left+span*j/n,prev=y-a+2*a*(j-1)/n;points.push([x,prev]);if(j<n)points.push([x,y-a+2*a*j/n]);}break;
-        }
-        case "folded": {
-          const k=s.symmetry==="mirrored"&&f%2?1-t:t;
-          const shift=a*(.25+.75*k);
-          points=[[left,y],[left+span*.3,y-shift],[left+span*.7,y+shift],[right,y]];break;
-        }
-        default: points=[[left,y+a],[left+span/2,y-a],[right,y+a]];
-      }
-      paths.push(points);
-    }
-    lines.push({i,paths,colour,weight});
+    lines.push({i,paths:[profile.map(([x,offset])=>[x,y+offset])],colour,weight});
   }
   return lines;
 }
 function rhythmicPath(line){
-  return line.paths.map(points=>points.map(([x,y],j)=>(j?"L":"M")+x+" "+y).join(" ")).join(" ");
+  return line.paths[0].map(([x,y],j)=>(j?"L":"M")+x+" "+y).join(" ");
 }
 function renderRhythmic(settings){
   art.replaceChildren();art.removeAttribute("transform");art.style.isolation="isolate";hoveredRhythm=null;
-  const s=rhythmicState,lines=rhythmicGeometry(s);
+  const s=rhythmicState,lines=rhythmicGeometry(s,settings);
   if(settings.background)art.append(svgElement("rect",{width:600,height:600,fill:"#fff"}));
   const g=svgElement("g",{transform:"translate(300 300) rotate("+settings.rotation+") scale("+settings.scale+") translate(-300 -300)","data-rhythmic-geometry":""});
   for(const line of lines){
@@ -146,7 +188,7 @@ function selectRhythmicAtPoint(event){
   const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse()),scale=Math.hypot(matrix.a,matrix.b);
   if(!scale)return;
   let best=null,nearest=Infinity;
-  for(const line of rhythmicGeometry(rhythmicState)){
+  for(const line of rhythmicGeometry(rhythmicState,readSettings())){
     for(const points of line.paths)for(let j=1;j<points.length;j++){
       const [ax,ay]=points[j-1],[bx,by]=points[j],dx=bx-ax,dy=by-ay;
       const t=Math.max(0,Math.min(1,((point.x-ax)*dx+(point.y-ay)*dy)/(dx*dx+dy*dy||1)));
