@@ -189,25 +189,73 @@ function initFillEditor(){
   }
   document.querySelector("#pattern-alignment").addEventListener("change",event=>{patternDraft.alignment=event.target.value;commitPatternDraft();});
 }
+// Automatic patterns need enough room to read as a texture, not a stray
+// mark. Check both the actual rendered size and the number of repeats.
+// Manual editing and imported presets intentionally remain unrestricted.
+function generatedPatternFits(shortDimension, pattern, scale = 1) {
+  const repeats = pattern.type === "checkerboard" ? 4 : 3;
+  return shortDimension * scale >= 40 && shortDimension >= repeats * pattern.spacing;
+}
+
+function generatedGroupPatternFits(candidate, index, pattern) {
+  const raw = candidate.settings;
+  const scale = raw.scale / 100;
+  const variation = raw.variation / 100;
+  if (candidate.emptyGroups.has(index)) return false;
+  if (candidate.type === "interlocking") {
+    if (candidate.emptyCells.has(cellKey(0, index)) || candidate.cellColours.has(cellKey(0, index))) return false;
+    const geometry = circleGeometry({...raw,scale,variation},index,candidate.seed,candidate.circleSizes);
+    return generatedPatternFits(geometry.r * 2,pattern);
+  }
+  if (candidate.type === "radiating") {
+    if (candidate.emptyCells.has(cellKey(0, index)) || candidate.cellColours.has(cellKey(0, index))) return false;
+    const width = raw.bandWidth * scale * (1 + (seededUnit(index + 47,candidate.seed) - .5) * variation * .4);
+    const position = raw.segments === 1 ? .5 : index / (raw.segments - 1);
+    const length = raw.bandLength * scale * Math.max(.35,.64 + .36 * Math.sin(Math.PI * position) + (seededUnit(index + 29,candidate.seed) - .5) * variation * .5);
+    return generatedPatternFits(Math.min(width,length),pattern);
+  }
+  const outer = 245 * scale, inner = outer * raw.clearance / 100;
+  const radialSpace = Math.max(1,outer-inner);
+  const gap = Math.min(raw.spacing,radialSpace/(raw.rings*2));
+  const width = (radialSpace-gap*(raw.rings-1))/raw.rings;
+  // A group pattern is inherited by all non-overridden visible sections.
+  // Require even the narrowest of those sections to accommodate the repeat.
+  const sections = [];
+  for(let ring=0;ring<raw.rings;ring++){
+    const key=cellKey(ring,index);
+    if(candidate.emptyCells.has(key)||candidate.cellColours.has(key))continue;
+    const radius = outer-ring*(width+gap)-width/2;
+    sections.push(Math.min(width,2*radius*Math.sin(Math.PI/raw.segments)));
+  }
+  return sections.length>0 && sections.every(size=>generatedPatternFits(size,pattern));
+}
+
 function randomCandidatePatterns(candidate){
   const result={};
   if(candidate.type==="orbital")return result;
   if(candidate.seed===4821||Math.random()>=.25)return result;
   const p={...defaultPattern("#25282a"),type:randomChoice(PATTERN_TYPES.map(([id])=>id)),spacing:randomChoice([10,14,18,22]),weight:randomChoice([2,3,4]),rotation:0};
   const put=(key,colour)=>{result[key]={...p,foreground:colour};};
+  const scale=candidate.settings.scale/100;
   if(candidate.type==="contour"){
-    const options=candidate.contour.circles.slice(0,candidate.contour.accents).map((c,i)=>({c,i})).filter(({c})=>c.visible);
+    const options=candidate.contour.circles.slice(0,candidate.contour.accents).map((c,i)=>({c,i})).filter(({c})=>c.visible && circleFitsContour(candidate.contour,c) && generatedPatternFits(c.diameter,p,scale));
     if(options.length){const {c,i}=randomChoice(options);put("contour:accent:"+i,c.colour);}
   }else if(candidate.type==="modular"){
     const s=candidate.modular;
-    const options=[];for(let r=0;r<s.rows;r++)for(let c=0;c<s.columns;c++)if(modularIncluded(s,0,r,c)&&modularModule(s,0,r,c).visible)options.push([r,c]);
+    const options=[];for(let r=0;r<s.rows;r++)for(let c=0;c<s.columns;c++)if(modularIncluded(s,0,r,c)&&modularModule(s,0,r,c).visible&&generatedPatternFits(Math.min(s.width,s.height),p,scale))options.push([r,c]);
     if(options.length){const [r,c]=randomChoice(options);put("modular:module:0:"+r+":"+c,modularModule(s,0,r,c).colour);}
   }else if(candidate.type==="triangular"){
     const s=candidate.triangular,options=[];
-    for(let r=0;r<s.rows;r++)for(let c=0;c<s.columns;c++)if(triangleCell(s,r,c).visible)options.push([r,c]);
+    for(let r=0;r<s.rows;r++)for(let c=0;c<s.columns;c++){
+      const shape=triangleGeometry(s,r,c);
+      // The diameter of the inscribed circle is a conservative measure of
+      // the space available within a right triangle.
+      const inscribedDiameter=shape.w+shape.h-Math.hypot(shape.w,shape.h);
+      if(shape.visible&&generatedPatternFits(inscribedDiameter,p,scale))options.push([r,c]);
+    }
     shuffled(options).slice(0,Math.max(1,Math.floor(options.length*.16))).forEach(([r,c])=>put("triangular:"+r+":"+c,triangleCell(s,r,c).colour));
   }else{
-    const options=candidate.colours.map((colour,i)=>({colour,i})).filter(({i})=>!candidate.emptyGroups.has(i));
+    const options=candidate.colours.map((colour,i)=>({colour,i})).filter(({i})=>generatedGroupPatternFits(candidate,i,p));
     if(options.length){const {colour,i}=randomChoice(options);put("group:"+i,colour);}
   }
   return result;
