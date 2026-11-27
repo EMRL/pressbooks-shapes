@@ -39,6 +39,8 @@ function contourSymmetry(arrangement) {
   return ["arch", "loop"].includes(arrangement) ? "mirrored" : "rotational";
 }
 
+// Trim the tangent tails beyond the largest possible rotated crop (600 / sqrt(2) / .7).
+const CONTOUR_TAIL_EDGE = 640;
 function contourPath(state, index) {
   const offset = (index - (state.count - 1) / 2) * state.spacing;
   const R = state.radius;
@@ -57,10 +59,10 @@ function contourPath(state, index) {
     const y = direction * separation / 2;
     const r = R + direction * offset;
     const left = x - r, right = x + r;
-    if (i === 0) d = "M " + point(left, y - 1800) + " L " + point(left, y);
+    if (i === 0) d = "M " + point(left, -CONTOUR_TAIL_EDGE) + " L " + point(left, y);
     else d += " L " + point(left, y);
     d += " A " + r + " " + r + " 0 0 " + (direction === 1 ? 0 : 1) + " " + point(right, y);
-    if (i === turns - 1) d += " L " + point(right, y - direction * 1800);
+    if (i === turns - 1) d += " L " + point(right, -direction * CONTOUR_TAIL_EDGE);
   }
   return d;
 }
@@ -90,8 +92,8 @@ function contourClearance(state, x, y) {
         ? Math.abs(Math.hypot(x - cx, y - cy) - radius)
         : Math.min(Math.hypot(x - left, y - cy), Math.hypot(x - right, y - cy));
       distance = Math.min(distance, arcDistance);
-      if (j === 0) distance = Math.min(distance, vertical(left, cy - 1800, cy));
-      if (j === turns - 1) distance = Math.min(distance, vertical(right, cy, cy - direction * 1800));
+      if (j === 0) distance = Math.min(distance, vertical(left, -CONTOUR_TAIL_EDGE, cy));
+      if (j === turns - 1) distance = Math.min(distance, vertical(right, cy, -direction * CONTOUR_TAIL_EDGE));
       else distance = Math.min(distance, vertical(right, cy, -cy));
     }
   }

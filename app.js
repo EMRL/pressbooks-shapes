@@ -41,6 +41,7 @@ const controls = {
   dotX: document.querySelector("#dot-x"),
   dotY: document.querySelector("#dot-y"),
   background: document.querySelector("#background"),
+  showAll: document.querySelector("#show-all"),
   overlapModes: Array.from(document.querySelectorAll('input[name="overlap-mode"]'))
 };
 const outputs = {
@@ -108,11 +109,11 @@ let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
-const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null, modular: null, triangular: null };
+const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null, modular: null, triangular: null, orbital: null };
 let activeDesignType = designTypeSelect.value;
 
 function objectName(type = designTypeSelect.value) {
-  return type === "interlocking" ? "circle" : type === "radiating" ? "band" : "group";
+  return ["interlocking","orbital"].includes(type) ? "circle" : type === "radiating" ? "band" : "group";
 }
 
 function defaultColours(type) {
@@ -152,6 +153,7 @@ function captureDesignState() {
     contour: contourClone(),
     modular: modularClone(),
     triangular: triangleClone(),
+    orbital: orbitalClone(),
     patterns: clonePatternFills(),
     selectedCell: { ...selectedCell },
     activeGroup: activeGroup,
@@ -190,6 +192,7 @@ function restoreDesignState(snapshot) {
   restoreContourState(snapshot.contour);
   restoreModularState(snapshot.modular);
   restoreTriangleState(snapshot.triangular);
+  restoreOrbitalState(snapshot.orbital);
   restorePatternFills(snapshot.patterns);
   selectedCell = { ...snapshot.selectedCell };
   activeGroup = snapshot.activeGroup;
@@ -207,6 +210,9 @@ function updateDesignChrome() {
     document.querySelector("#overlap-transparent-help").textContent = "Knock out overlapping areas.";
   }
   const triangular = type === "triangular";
+  const orbital = type === "orbital";
+  document.querySelector("#orbital-controls").hidden = !orbital;
+  document.querySelector("#orbital-editor-tab").hidden = !orbital;
   const singular = objectName(type);
   const name = singular[0].toUpperCase() + singular.slice(1);
   concentricControls.hidden = type !== "concentric";
@@ -218,9 +224,9 @@ function updateDesignChrome() {
   document.querySelector("#triangle-editor-tab").hidden = !triangular;
   document.querySelector("#module-editor-tab").hidden = !modular;
   document.querySelector("#layer-editor-tab").hidden = !modular;
-  document.querySelector("#variation-control").hidden = contour || modular || triangular;
+  document.querySelector("#variation-control").hidden = contour || modular || triangular || orbital;
   document.querySelector(".overlap-mode-control").hidden = contour || triangular;
-  document.querySelector("#group-editor-tab").hidden = contour || modular || triangular;
+  document.querySelector("#group-editor-tab").hidden = contour || modular || triangular || orbital;
   document.querySelector("#line-editor-tab").hidden = !contour;
   document.querySelector("#accent-editor-tab").hidden = !contour;
   document.querySelector(".editor-tabs").classList.toggle("is-contour", contour || modular);
@@ -228,7 +234,7 @@ function updateDesignChrome() {
   document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = type !== "concentric"; });
   document.querySelector("#object-rotation").hidden = interlocking;
   document.querySelector("#object-diameter").hidden = !interlocking;
-  const title = triangular ? "Triangular composition" : modular ? "Modular composition" : contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
+  const title = orbital ? "Orbital composition" : triangular ? "Triangular composition" : modular ? "Modular composition" : contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
   document.querySelector("#group-editor-tab").textContent = name + " editor";
   document.querySelector(".group-panel-help").textContent = type === "concentric"
     ? "Select a group or ring section to adjust its colour, position, or visibility."
@@ -240,7 +246,7 @@ function updateDesignChrome() {
   if (rotationNumber) rotationNumber.setAttribute("aria-label", name + " rotation numeric value");
   document.title = "Pressbooks Shapes · " + title;
   document.querySelector('meta[name="description"]').setAttribute("content", title + " design and SVG export.");
-  document.querySelector("#intro-description").textContent = triangular ? "Arrange proportional triangles, refine the details, and download your SVG." : modular ? "Arrange repeating modules and overlapping grids, refine the details, and download your SVG." : contour ? "Arrange parallel contours and accent circles, refine the details, and download your SVG." : interlocking
+  document.querySelector("#intro-description").textContent = orbital ? "Arrange circular outlines, refine the details, and download your SVG." : triangular ? "Arrange proportional triangles, refine the details, and download your SVG." : modular ? "Arrange repeating modules and overlapping grids, refine the details, and download your SVG." : contour ? "Arrange parallel contours and accent circles, refine the details, and download your SVG." : interlocking
     ? "Arrange overlapping circles, refine the details, and download your SVG."
     : radiating ? "Arrange radiating bands, refine the details, and download your SVG."
     : "Arrange concentric groups, refine the details, and download your SVG.";
@@ -277,6 +283,8 @@ function setDesignType(type, saveCurrent, restoreTarget) {
     if (type === "contour") restoreContourState(referenceContourState());
     if (type === "modular") restoreModularState(referenceModularState());
     if (type === "triangular") restoreTriangleState(referenceTriangleState());
+    if (type === "orbital") restoreOrbitalState(referenceOrbitalState());
+    controls.showAll.checked = false;
     compositionSeed = 4821;
   }
   selectedCell = { ring: 0, segment: 0 };
@@ -457,6 +465,7 @@ function cellColor(settings, ring, segment) {
 }
 
 function targetColour(target) {
+  if (target.type === "orbital") return orbitalColour(target.index);
   if (target.type === "triangular") return triangleColour(target.index);
   if (target.type === "modular") return modularColour(target.index);
   if (target.type === "contour") return contourColour(target.index);
@@ -502,7 +511,10 @@ function choosePaletteColour(hex, pattern = null) {
     if (pattern) patternFills.set(patternKey(target), pattern);
     else patternFills.delete(patternKey(target));
   }
-  if (target.type === "triangular") {
+  if (target.type === "orbital") {
+    if(String(target.index).startsWith("group:")) orbitalState.colours[Number(target.index.split(":")[1])] = hex;
+    else orbitalOverride(target.index).colour = hex;
+  } else if (target.type === "triangular") {
     setTriangleColour(target.index, hex);
   } else if (target.type === "modular") {
     setModularColour(target.index, hex);
@@ -528,7 +540,8 @@ function choosePaletteColour(hex, pattern = null) {
 
 function refreshLivePalette(target) {
   let trigger;
-  if (target.type === "triangular") trigger = trianglePaletteTrigger(target.index);
+  if (target.type === "orbital") trigger = document.querySelector('[data-orbital-colour="'+target.index+'"]');
+  else if (target.type === "triangular") trigger = trianglePaletteTrigger(target.index);
   else if (target.type === "modular") trigger = modularPaletteTrigger(target.index);
   else if (target.type === "contour") trigger = target.index === "default" ? document.querySelector("#contour-default-colour") : document.querySelector('[data-contour-colour="' + target.index + '"]');
   else if (target.type === "cell") trigger = segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
@@ -542,7 +555,7 @@ function refreshLivePalette(target) {
 }
 
 function configurePaletteActions(type,index) {
-  sectionPaletteActions.hidden = type === "dot" || type === "contour" || (type === "modular" && index.startsWith("layer:")) || (type === "triangular" && index === "default");
+  sectionPaletteActions.hidden = type === "orbital" || type === "dot" || type === "contour" || (type === "modular" && index.startsWith("layer:")) || (type === "triangular" && index === "default");
   if (type === "triangular" && index !== "default") {
     const state = trianglePaletteState(index);
     cellEditor.empty.checked = state.empty;
@@ -734,6 +747,7 @@ function readSettings() {
     dotX: Number(controls.dotX.value),
     dotY: Number(controls.dotY.value),
     background: controls.background.checked,
+    showAll: controls.showAll.checked,
     overlapMode: controls.overlapModes.find(function (input) { return input.checked; }).value,
     bandSpan: Number(controls.bandSpan.value),
     fanAngle: Number(controls.fanAngle.value),
@@ -817,8 +831,14 @@ function createInterlockingCircles(settings) {
 }
 
 function render() {
+  renderComposition();
+  updatePreviewFrame();
+}
+
+function renderComposition() {
   beginPatternRender();
   const settings = readSettings();
+  if (settings.type === "orbital") { renderOrbital(settings); return; }
   if (settings.type === "triangular") { renderTriangular(settings); return; }
   if (settings.type === "modular") { renderModular(settings); return; }
   if (settings.type === "contour") { renderContour(settings); return; }
@@ -905,10 +925,10 @@ function render() {
       mask.id = "group-mask-" + (segment + 1);
       mask.setAttribute("maskUnits", "userSpaceOnUse");
       mask.setAttribute("maskContentUnits", "userSpaceOnUse");
-      mask.setAttribute("x", "-600");
-      mask.setAttribute("y", "-600");
-      mask.setAttribute("width", "1800");
-      mask.setAttribute("height", "1800");
+      mask.setAttribute("x", "-4000");
+      mask.setAttribute("y", "-4000");
+      mask.setAttribute("width", "8000");
+      mask.setAttribute("height", "8000");
       drawnSegments.filter(function (item) { return item.segment === segment; }).forEach(function (item) {
         const visible = document.createElementNS(SVG_NS, "path");
         visible.setAttribute("d", item.d);
@@ -1110,14 +1130,63 @@ function seededUnit(value, seed) {
   return x - Math.floor(x);
 }
 
+// Measure in SVG user coordinates, not CSS pixels. The original frame stays
+// included; rotated paths use conservative bounds to avoid cutting artwork.
+function updatePreviewFrame() {
+  const show = controls.showAll.checked;
+  preview.querySelectorAll(".expanded-frame-background, .artboard-guide").forEach(e=>e.remove());
+  const originalBackground=Array.from(art.children).find(e=>e.tagName.toLowerCase()==="rect" && e.getAttribute("width")==="600" && e.getAttribute("height")==="600");
+  if(originalBackground) originalBackground.style.display=show?"none":"";
+  let left=0,top=0,right=600,bottom=600;
+  if(show && !document.querySelector("#main").hidden){
+    const root=preview.getCTM();
+    if(root){
+      const inverse=root.inverse();
+      for(const shape of art.querySelectorAll("path,rect,circle,polygon")){
+        if(shape.closest("defs,mask,clipPath,pattern"))continue;
+        if(shape.parentNode===art && shape.tagName.toLowerCase()==="rect" && shape.getAttribute("width")==="600" && shape.getAttribute("height")==="600")continue;
+        const matrix=shape.getCTM();if(!matrix)continue;
+        const m=inverse.multiply(matrix), b=shape.getBBox(), stroke=Number(shape.getAttribute("stroke-width")||0)/2;
+        const include=(x,y)=>{left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);};
+        if(shape.tagName.toLowerCase()==="circle"){
+          const x=Number(shape.getAttribute("cx")),y=Number(shape.getAttribute("cy")),r=Number(shape.getAttribute("r"))+stroke;
+          const cx=m.a*x+m.c*y+m.e,cy=m.b*x+m.d*y+m.f,rx=r*Math.hypot(m.a,m.c),ry=r*Math.hypot(m.b,m.d);
+          include(cx-rx,cy-ry);include(cx+rx,cy+ry);
+        } else {
+          for(const x of [b.x-stroke,b.x+b.width+stroke])for(const y of [b.y-stroke,b.y+b.height+stroke])include(m.a*x+m.c*y+m.e,m.b*x+m.d*y+m.f);
+        }
+      }
+    }
+  }
+  left=Math.floor(left+1e-7);top=Math.floor(top+1e-7);right=Math.ceil(right-1e-7);bottom=Math.ceil(bottom-1e-7);
+  const w=right-left,h=bottom-top,max=Math.max(w,h);
+  preview.setAttribute("viewBox",[left,top,w,h].join(" "));
+  preview.style.width=(100*w/max)+"%";preview.style.height=(100*h/max)+"%";preview.style.aspectRatio=w+" / "+h;
+  document.querySelector(".preview-size").textContent=w+" × "+h;
+  if(show){
+    if(controls.background.checked){
+      const bg=document.createElementNS(SVG_NS,"rect");bg.classList.add("expanded-frame-background");
+      for(const [key,value] of Object.entries({x:left,y:top,width:w,height:h,fill:"#fff"}))bg.setAttribute(key,value);
+      preview.insertBefore(bg,art);
+    }
+    const guide=document.createElementNS(SVG_NS,"rect");guide.classList.add("artboard-guide");
+    for(const [key,value] of Object.entries({x:0,y:0,width:600,height:600,fill:"none",stroke:"#a7a8a9","stroke-width":1,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke","pointer-events":"none","aria-hidden":"true"}))guide.setAttribute(key,value);
+    preview.append(guide);
+  }
+}
+
 function buildExportSvg() {
+  updatePreviewFrame();
   const settings = readSettings();
   const clone = preview.cloneNode(true);
   clone.querySelector("#shape-title")?.remove();
   clone.querySelector("#shape-desc")?.remove();
   clone.setAttribute("xmlns", SVG_NS);
-  clone.setAttribute("width", "600");
-  clone.setAttribute("height", "600");
+  clone.querySelector(".artboard-guide")?.remove();
+  clone.removeAttribute("style");
+  const [, , width, height] = preview.getAttribute("viewBox").split(" ");
+  clone.setAttribute("width", width);
+  clone.setAttribute("height", height);
   clone.setAttribute("role", "img");
   clone.setAttribute("aria-labelledby", "export-title export-desc");
 
@@ -1129,7 +1198,7 @@ function buildExportSvg() {
   const overlapDescription = settings.overlapMode === "transparent"
     ? " with overlapping areas removed"
     : settings.overlapMode === "multiply" ? " with overlapping colours multiplied" : "";
-  description.textContent = settings.type === "triangular" ? triangleState.rows + " rows and " + triangleState.columns + " columns of proportional right triangles." : settings.type === "modular" ? modularState.rows + " rows and " + modularState.columns + " columns of rounded rectangles across " + modularState.layers + " layers" + overlapDescription + "." : settings.type === "contour" ? contourState.count + " parallel contour lines and " + contourState.accents + " accent circles." : settings.type !== "concentric"
+  description.textContent = settings.type === "orbital" ? orbitalState.count + " circular outlines" + overlapDescription + "." : settings.type === "triangular" ? triangleState.rows + " rows and " + triangleState.columns + " columns of proportional right triangles." : settings.type === "modular" ? modularState.rows + " rows and " + modularState.columns + " columns of rounded rectangles across " + modularState.layers + " layers" + overlapDescription + "." : settings.type === "contour" ? contourState.count + " parallel contour lines and " + contourState.accents + " accent circles." : settings.type !== "concentric"
     ? settings.segments + " " + settings.type + " " + objectName(settings.type) + "s" + overlapDescription + "."
     : settings.rings + " concentric rings and " + settings.segments + " groups" + overlapDescription + ".";
   clone.insertBefore(description, clone.firstChild);
@@ -1152,22 +1221,27 @@ function downloadSvg() {
 
 function buildPresetPayload() {
   const settings = readSettings();
+  if (settings.type === "orbital") return {
+    format: "pressbooks-shapes-preset", version: 2, designType: "orbital", randomSeed: compositionSeed,
+    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, overlapMode: settings.overlapMode, showAll: settings.showAll},
+    orbital: orbitalClone()
+  };
   if (settings.type === "triangular") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "triangular", randomSeed: compositionSeed,
     patterns: clonePatternFills(),
-    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background},
+    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, showAll: settings.showAll},
     triangular: triangleClone()
   };
   if (settings.type === "modular") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "modular", randomSeed: compositionSeed,
     patterns: clonePatternFills(),
-    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, overlapMode: settings.overlapMode},
+    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, overlapMode: settings.overlapMode, showAll: settings.showAll},
     modular: modularClone()
   };
   if (settings.type === "contour") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "contour", randomSeed: compositionSeed,
     patterns: clonePatternFills(),
-    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background},
+    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, showAll: settings.showAll},
     contour: contourClone()
   };
   return {
@@ -1185,6 +1259,7 @@ function buildPresetPayload() {
       scalePercent: Math.round(settings.scale * 100),
       rotationDegrees: settings.rotation,
       background: settings.background,
+      showAll: settings.showAll,
       overlapMode: settings.overlapMode,
       radiating: {
         baselineSpanPx: settings.bandSpan,
@@ -1249,6 +1324,11 @@ function isBrandColour(value) {
 }
 
 function validatePresetPayload(payload) {
+  if (payload?.settings?.showAll !== undefined && typeof payload.settings.showAll !== "boolean") throw new Error("Invalid Show all setting.");
+  if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "orbital") {
+    if (!validOrbitalPreset(payload)) throw new Error("This orbital preset has unsupported settings or geometry.");
+    return payload;
+  }
   if (payload && !validPatternFills(payload.patterns,payload.designType)) throw new Error("This preset has unsupported pattern fills.");
   if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "triangular") {
     if (!validTriangularPreset(payload)) throw new Error("This triangular preset has unsupported settings or geometry.");
@@ -1333,20 +1413,25 @@ function validatePresetPayload(payload) {
 function applyPresetPayload(payload) {
   const settings = payload.settings;
   setDesignType(payload.designType, true, false);
+  controls.showAll.checked = Boolean(settings.showAll);
+  if (payload.designType === "orbital") {
+    applyOrbitalCandidate({orbital:payload.orbital,seed:payload.randomSeed,settings:{rotation:settings.rotationDegrees,scale:settings.scalePercent,background:settings.background,overlapMode:settings.overlapMode}});
+    return;
+  }
   restorePatternFills(payload.patterns);
   if (payload.designType === "triangular") {
     applyTriangularCandidate({triangular: payload.triangular, seed: payload.randomSeed, patterns: payload.patterns,
-      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background}});
+      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background, showAll: settings.showAll}});
     return;
   }
   if (payload.designType === "modular") {
     applyModularCandidate({modular: payload.modular, seed: payload.randomSeed, patterns: payload.patterns,
-      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background, overlapMode: settings.overlapMode}});
+      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background, overlapMode: settings.overlapMode, showAll: settings.showAll}});
     return;
   }
   if (payload.designType === "contour") {
     applyContourCandidate({contour: payload.contour, seed: payload.randomSeed, patterns: payload.patterns,
-      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background}});
+      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background, showAll: settings.showAll}});
     return;
   }
   controls.rings.value = String(settings.rings);
@@ -1879,6 +1964,7 @@ function evaluateRadiatingCandidate(candidate) {
 
 function applySurpriseCandidate(candidate) {
   restorePatternFills(candidate.patterns);
+  if (candidate.type === "orbital") { applyOrbitalCandidate(candidate); return; }
   if (candidate.type === "triangular") { applyTriangularCandidate(candidate); return; }
   if (candidate.type === "modular") { applyModularCandidate(candidate); return; }
   if (candidate.type === "contour") { applyContourCandidate(candidate); return; }
@@ -1940,6 +2026,10 @@ function harmoniousComposition(type) {
 }
 
 function baseHarmoniousComposition(type) {
+  if (type === "orbital") {
+    const c=chooseHarmoniousCandidate(createOrbitalCandidate,evaluateOrbitalCandidate,16,.72);
+    return c.quality.valid ? c : createOrbitalCandidate(true);
+  }
   if (type === "triangular") {
     const candidate = chooseHarmoniousCandidate(createTriangularCandidate, evaluateTriangularCandidate, 16, 0.72);
     if (candidate.quality.valid) return candidate;
@@ -1983,6 +2073,10 @@ function generateSurprise() {
   const candidate = harmoniousComposition(designTypeSelect.value);
   applySurpriseCandidate(candidate);
   const settings = candidate.settings;
+  if (candidate.type === "orbital") {
+    document.querySelector("#surprise-status").textContent = "New composition generated with " + candidate.orbital.count + " circular outlines.";
+    return;
+  }
   if (candidate.type === "triangular") {
     document.querySelector("#surprise-status").textContent = "New composition generated with " + candidate.triangular.rows + " rows and " + candidate.triangular.columns + " columns.";
     return;
@@ -2083,6 +2177,7 @@ attachNumericInputs();
 initContour();
 initModular();
 initTriangular();
+initOrbital();
 initFillEditor();
 cellEditor.empty.addEventListener("change", function () {
   if (!paletteTarget) return;
@@ -2166,7 +2261,6 @@ groupInspector.addEventListener("transitionend", function (event) {
 });
 const homeScreen = document.querySelector("#home");
 const editorScreen = document.querySelector("#main");
-const homeButton = document.querySelector("#home-button");
 const galleryTypes = Array.from(document.querySelectorAll(".gallery-card[data-design]"), function (card) { return card.dataset.design; });
 
 function updateGalleryThumbnail(type) {
@@ -2177,6 +2271,7 @@ function updateGalleryThumbnail(type) {
   svg.setAttribute("viewBox", "0 0 600 600");
   const artwork = art.cloneNode(true);
   artwork.removeAttribute("id");
+  Array.from(artwork.children).filter(e=>e.tagName.toLowerCase()==="rect" && e.getAttribute("width")==="600" && e.getAttribute("height")==="600").forEach(e=>e.style.removeProperty("display"));
   artwork.querySelectorAll("[tabindex], [role], [aria-label], .is-selected").forEach(function (element) {
     element.removeAttribute("tabindex");
     element.removeAttribute("role");
@@ -2207,7 +2302,6 @@ function shuffleGallery(announce = true) {
 function updateScreen(editor) {
   homeScreen.hidden = editor;
   editorScreen.hidden = !editor;
-  homeButton.hidden = !editor;
   document.querySelector("#download-svg").hidden = !editor;
   document.querySelector("#export-settings").hidden = !editor;
   presetMenu.open = false;
@@ -2244,7 +2338,6 @@ document.querySelector(".brand").addEventListener("click", function (event) {
   event.preventDefault();
   showHome();
 });
-homeButton.addEventListener("click", function () { showHome(); });
 document.querySelector("#shuffle-gallery").addEventListener("click", function () { shuffleGallery(); });
 document.querySelectorAll(".gallery-card[data-design]").forEach(function (card) {
   card.addEventListener("click", function () { showEditor(card.dataset.design); });

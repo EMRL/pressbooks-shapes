@@ -16,7 +16,7 @@ function patternKey(target) {
   if(target.type==="dot")return "dot";
   return target.type+":"+target.index;
 }
-function patternEligible(target) { return target.type!=="contour" || String(target.index).startsWith("accent:"); }
+function patternEligible(target) { return target.type!=="orbital" && (target.type!=="contour" || String(target.index).startsWith("accent:")); }
 function resolvedPattern(key) {
   if(patternFills.has(key))return patternFills.get(key);
   const parts=key.split(":");
@@ -191,6 +191,7 @@ function initFillEditor(){
 }
 function randomCandidatePatterns(candidate){
   const result={};
+  if(candidate.type==="orbital")return result;
   if(candidate.seed===4821||Math.random()>=.25)return result;
   const p={...defaultPattern("#25282a"),type:randomChoice(PATTERN_TYPES.map(([id])=>id)),spacing:randomChoice([10,14,18,22]),weight:randomChoice([2,3,4]),rotation:0};
   const put=(key,colour)=>{result[key]={...p,foreground:colour};};

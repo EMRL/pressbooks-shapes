@@ -16,6 +16,7 @@
     <script src="contour.js" defer></script>
     <script src="modular.js" defer></script>
     <script src="triangular.js" defer></script>
+    <script src="orbital.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -26,7 +27,6 @@
           <span class="brand-name"><strong>Pressbooks</strong> Shapes</span>
         </a>
         <div class="topbar-actions">
-          <button class="home-button" id="home-button" type="button" hidden><i class="ph-light ph-house" aria-hidden="true"></i>Home</button>
           <details class="preset-menu" id="preset-menu">
             <summary class="preset-menu-trigger" id="preset-menu-toggle" aria-label="Presets"><i class="ph-light ph-bookmark-simple preset-icon" aria-hidden="true"></i><span>Presets</span><i class="ph-light ph-caret-down preset-chevron" aria-hidden="true"></i></summary>
             <div class="preset-menu-panel">
@@ -71,6 +71,10 @@
           <span class="gallery-art"><img alt="" id="gallery-triangular"></span>
           <span class="gallery-card-details"><span><strong>Triangular composition</strong><small>Directional patterns and negative space</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
         </button>
+        <button class="gallery-card" type="button" data-design="orbital">
+          <span class="gallery-art"><img alt="" id="gallery-orbital"></span>
+          <span class="gallery-card-details"><span><strong>Orbital composition</strong><small>Circular outlines and rhythmic displacement</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
+        </button>
         <div class="gallery-card is-unavailable">
           <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><g fill="none" stroke="#a7a8a9" stroke-width="34"><circle cx="0" cy="600" r="490"/><circle cx="0" cy="600" r="425"/><circle cx="0" cy="600" r="360"/><circle cx="0" cy="600" r="295"/></g></svg></span>
           <span class="gallery-card-details"><span><strong>Cropped composition</strong><small>Oversized shapes and negative space</small></span><span class="coming-soon">Coming soon</span></span>
@@ -80,14 +84,14 @@
     </main>
     <main id="main" class="layout" hidden>
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option value="modular">Modular composition</option><option value="triangular">Triangular composition</option><option disabled>Cropped · coming soon</option></select></h1>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option value="modular">Modular composition</option><option value="triangular">Triangular composition</option><option value="orbital">Orbital composition</option><option disabled>Cropped · coming soon</option></select></h1>
         <p id="intro-description">Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
         <section class="preview-panel" aria-label="Shape preview">
           <div class="preview-head">
             <div><span class="panel-kicker">Live preview</span><span class="preview-size">600 × 600</span></div>
-            <span class="seed-badge"><span class="seed-dot"></span><span id="preview-type-label">Concentric composition</span></span>
+            <label class="preview-show-all" for="show-all"><span>Show all</span><span class="toggle-wrap"><input id="show-all" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label><span class="seed-badge"><span class="seed-dot"></span><span id="preview-type-label">Concentric composition</span></span>
           </div>
           <div class="preview-stage" id="preview-stage">
             <svg id="shape-preview" viewBox="0 0 600 600" role="img" aria-labelledby="shape-title shape-desc" xmlns="http://www.w3.org/2000/svg">
@@ -102,6 +106,7 @@
           <div class="editor-tabs" role="tablist" aria-label="Control panels">
             <button id="design-controls-tab" class="editor-tab" type="button" role="tab" aria-selected="true" aria-controls="design-controls-panel" tabindex="0">Design controls</button>
             <button id="group-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="group-editor-panel" tabindex="-1">Group editor</button>
+            <button id="orbital-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="orbital-editor-panel" tabindex="-1" hidden>Circle editor</button>
             <button id="triangle-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="triangle-editor-panel" tabindex="-1" hidden>Triangle editor</button>
             <button id="module-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="module-editor-panel" tabindex="-1" hidden>Module editor</button>
             <button id="layer-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="layer-editor-panel" tabindex="-1" hidden>Layer editor</button>
@@ -175,6 +180,7 @@
             <p class="control-help">All triangles share the same proportions and remain inside their grid cells.</p>
             <button type="button" class="reset-position-button" id="reference-triangular"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
           </div>
+          <div id="orbital-controls" hidden><h3 class="control-section-title">Composition</h3><div class="control-group"><label for="orbital-arrangement">Arrangement</label><select id="orbital-arrangement" class="arrangement-select"><option value="concentric">Concentric</option><option value="drift">Drift</option><option value="orbit">Orbit</option><option value="spiral">Spiral</option><option value="cluster">Cluster</option><option value="scatter">Scatter</option></select></div><div class="control-group"><div class="control-label"><label for="orbital-count">Circles</label><output id="orbital-count-output"></output></div><input id="orbital-count" type="range" min="2" max="60" value="18" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-diameter">Outer diameter</label><output id="orbital-diameter-output"></output></div><input id="orbital-diameter" type="range" min="40" max="800" value="600" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-inner">Inner diameter</label><output id="orbital-inner-output"></output></div><input id="orbital-inner" type="range" min="5" max="95" value="35" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-weight">Line weight</label><output id="orbital-weight-output"></output></div><input id="orbital-weight" type="range" min="1" max="40" value="9" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-progression">Weight progression</label><output id="orbital-progression-output"></output></div><input id="orbital-progression" type="range" min="-90" max="90" value="65" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-displacement">Displacement</label><output id="orbital-displacement-output"></output></div><input id="orbital-displacement" type="range" min="0" max="300" value="55" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-angle">Direction</label><output id="orbital-angle-output"></output></div><input id="orbital-angle" type="range" min="0" max="359" value="35" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-variation">Variation</label><output id="orbital-variation-output"></output></div><input id="orbital-variation" type="range" min="0" max="100" value="12" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-groups">Colour groups</label><output id="orbital-groups-output"></output></div><input id="orbital-groups" type="range" min="1" max="6" value="2" step="1"></div><button type="button" class="reset-position-button" id="reference-orbital"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button></div>
           <fieldset class="overlap-mode-control">
             <legend>Overlap treatment</legend>
             <p id="overlap-help" class="control-help">Choose how groups interact where they cross.</p>
@@ -272,6 +278,7 @@
               <label class="position-axis" for="modular-layer-opacity"><span>Opacity</span><output id="modular-layer-opacity-output"></output></label><input id="modular-layer-opacity" type="range" min="0" max="100" value="100" step="1">
             </div>
           </section>
+          <section id="orbital-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="orbital-editor-tab" hidden><p class="group-panel-help">Select a circle to change its colour, position, size or visibility.</p><h3 class="control-section-title">Default group colours</h3><div id="orbital-group-list" class="palette-swatches"></div><h3 class="control-section-title">Individual circles</h3><div id="orbital-list" class="palette-swatches orbital-list"></div><div class="modular-layer-controls"><div class="control-label"><strong id="orbital-object-title">Circle 1</strong><button id="reset-orbital" class="reset-position-button" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div><div class="control-group"><div class="control-label"><label for="orbital-object-x">Horizontal</label><output id="orbital-object-x-output"></output></div><input id="orbital-object-x" type="range" min="-300" max="300" value="0" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-object-y">Vertical</label><output id="orbital-object-y-output"></output></div><input id="orbital-object-y" type="range" min="-300" max="300" value="0" step="1"></div><div class="control-group"><div class="control-label"><label for="orbital-object-size">Diameter scale</label><output id="orbital-object-size-output"></output></div><input id="orbital-object-size" type="range" min="25" max="200" value="100" step="1"></div></div></section>
           <section id="triangle-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="triangle-editor-tab" hidden>
             <p class="group-panel-help">Select a triangle to change its colour, size or visibility. All triangles retain their proportions.</p>
             <div id="triangle-default-list" class="palette-swatches"></div>
