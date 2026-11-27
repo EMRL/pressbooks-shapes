@@ -282,3 +282,25 @@ button.gallery-card:hover { border-color: var(--pathways-120); box-shadow: 0 3px
 #triangle-default-list { margin-bottom: 16px; }
 #triangle-grid .segment-cell:not(.is-empty) { background: var(--surface); position: relative; overflow: hidden; }
 #triangle-grid .segment-cell:not(.is-empty)::before { content: ""; position: absolute; inset: 0; background: var(--cell-color); clip-path: var(--triangle-clip); transform: scale(var(--triangle-scale)); transform-origin: var(--triangle-origin); }
+
+.fill-tabs { display: flex; border-bottom: 1px solid var(--light-60); margin-bottom: 8px; gap: 6px; }
+.fill-tabs button { flex: 1; padding: 7px; border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fill-tabs button[aria-pressed="true"] { border-color: var(--pathways-120); color: var(--pathways-120); }
+.pattern-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+.pattern-type { min-width: 0; padding: 3px; background: var(--surface); border: 1px solid var(--light-60); border-radius: 4px; cursor: pointer; font-size: 9px; }
+.pattern-type[aria-pressed="true"] { outline: 2px solid var(--pathways-120); outline-offset: 1px; }
+.pattern-type span { display: block; height: 28px; margin-bottom: 4px; background-size: 100% 100%; }
+.pattern-colour-targets { display: flex; gap: 4px; margin-bottom: 8px; }
+.pattern-colour-targets button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 3px; border: 1px solid var(--light-60); border-radius: 4px; background: var(--surface); font-size: 9px; cursor: pointer; }
+.pattern-colour-targets button[aria-pressed="true"] { border-color: var(--pathways-120); background: var(--light-20); }
+.pattern-colour-chip { width: 12px; height: 12px; border: 1px solid var(--dark-80); border-radius: 2px; }
+.pattern-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+.pattern-fields label { display: grid; gap: 3px; font-size: 10px; }
+.pattern-fields input, .pattern-fields select { width: 100%; min-width: 0; height: 27px; border: 1px solid var(--light-60); border-radius: 4px; padding: 3px; background: var(--surface); font-size: 11px; }
+.pattern-preview { height: 38px; margin: 6px 0 10px; border: 1px solid var(--light-60); background-size: 100% 100%; border-radius: 4px; }
+.pattern-apply { width: 100%; margin-top: 9px; min-height: 32px; background: var(--pathways-120); color: white; border: 0; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.color-trigger.has-pattern, .color-trigger.has-pattern .color-swatch { background-color: var(--surface); background-image: var(--fill-image); background-size: 100% 100%; }
+.segment-cell.has-pattern:not(.is-empty) { background-color: var(--surface); background-image: var(--fill-image); background-size: 100% 100%; }
+#triangle-grid .segment-cell.has-pattern:not(.is-empty) { background-image: none; }
+#triangle-grid .segment-cell.has-pattern:not(.is-empty)::before { background-color: var(--surface); background-image: var(--fill-image); background-size: 100% 100%; }
+.object-selector.is-empty .color-trigger.has-pattern .color-swatch { background-image: none; background-color: transparent; }

@@ -109,7 +109,7 @@ function circleFitsContour(state, circle) {
 // Geometry changes preserve valid circles and try nearby positions for any
 // collision. If the original diameter cannot fit, use the best available gap.
 function fitContourCircles(state) {
-  state.circles.slice(0, state.accents).forEach(circle => {
+  state.circles.slice(0, state.accents).forEach((circle,index) => {
     if (circleFitsContour(state, circle)) return;
     let best = { x: circle.x, y: circle.y, diameter: safeContourDiameter(state, circle.x, circle.y) };
     let nearest = null;
@@ -212,6 +212,7 @@ function renderContourEditors() {
       }, reset);
       selector.colour.dataset.contourColour = key;
       updateObjectSelector(selector, label, contourColour(key), item.visible, current() === i);
+      if (!isLine) paintFillSwatch(selector.colour,"contour:"+key);
       list.append(selector.card);
     }
   }
@@ -256,7 +257,7 @@ function renderContour(settings) {
     el.setAttribute("cx", 300 + circle.x);
     el.setAttribute("cy", 300 + circle.y);
     el.setAttribute("r", circle.diameter / 2);
-    el.setAttribute("fill", circle.colour);
+    el.setAttribute("fill", svgPatternFill("contour:accent:"+index,circle.colour,{x:300+circle.x,y:300+circle.y}));
     geometry.append(el);
   });
   art.append(geometry);
@@ -361,6 +362,7 @@ function createContourCandidate(reference = false) {
 }
 
 function applyContourCandidate(candidate) {
+  restorePatternFills(candidate.patterns);
   restoreContourState(candidate.contour);
   controls.rotation.value = candidate.settings.rotation;
   controls.scale.value = candidate.settings.scale;

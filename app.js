@@ -152,6 +152,7 @@ function captureDesignState() {
     contour: contourClone(),
     modular: modularClone(),
     triangular: triangleClone(),
+    patterns: clonePatternFills(),
     selectedCell: { ...selectedCell },
     activeGroup: activeGroup,
     compositionSeed: compositionSeed
@@ -189,6 +190,7 @@ function restoreDesignState(snapshot) {
   restoreContourState(snapshot.contour);
   restoreModularState(snapshot.modular);
   restoreTriangleState(snapshot.triangular);
+  restorePatternFills(snapshot.patterns);
   selectedCell = { ...snapshot.selectedCell };
   activeGroup = snapshot.activeGroup;
   compositionSeed = snapshot.compositionSeed;
@@ -271,6 +273,7 @@ function setDesignType(type, saveCurrent, restoreTarget) {
     segmentOffsets.clear();
     segmentRotations.clear();
     circleSizes.clear();
+    restorePatternFills();
     if (type === "contour") restoreContourState(referenceContourState());
     if (type === "modular") restoreModularState(referenceModularState());
     if (type === "triangular") restoreTriangleState(referenceTriangleState());
@@ -441,6 +444,7 @@ function renderGroupSwatches(count) {
   groupSelectors.forEach((selector, index) => {
     updateObjectSelector(selector, itemName + " " + (index + 1), groupColours[index], !emptyGroups.has(index), activeGroup === index);
     selector.select.dataset.color = groupColours[index];
+    paintFillSwatch(selector.colour, "group:"+index);
   });
 }
 
@@ -486,9 +490,18 @@ function closePalette(restoreFocus) {
   if (restoreFocus) trigger.focus();
 }
 
-function choosePaletteColour(hex) {
+function choosePaletteColour(hex, pattern = null) {
   if (!paletteTarget) return;
   const target = paletteTarget;
+  if (patternMode === "pattern" && !pattern && patternEligible(target)) {
+    patternDraft[patternColourTarget] = hex;
+    refreshPatternEditor();
+    return;
+  }
+  if (patternEligible(target)) {
+    if (pattern) patternFills.set(patternKey(target), pattern);
+    else patternFills.delete(patternKey(target));
+  }
   if (target.type === "triangular") {
     setTriangleColour(target.index, hex);
   } else if (target.type === "modular") {
@@ -533,7 +546,7 @@ function openPalette(trigger, type, index) {
     const state = trianglePaletteState(index);
     cellEditor.empty.checked = state.empty;
     cellEditor.empty.disabled = false;
-    cellEditor.reset.disabled = state.reset;
+    cellEditor.reset.disabled = state.reset && !patternFills.has(patternKey(paletteTarget));
     paletteActions.emptyLabel.textContent = "Empty triangle";
     paletteActions.reset.textContent = "Use default settings";
   }
@@ -541,7 +554,7 @@ function openPalette(trigger, type, index) {
     const state = modularPaletteState(index);
     cellEditor.empty.checked = state.empty;
     cellEditor.empty.disabled = false;
-    cellEditor.reset.disabled = state.reset;
+    cellEditor.reset.disabled = state.reset && !patternFills.has(patternKey(paletteTarget));
     paletteActions.emptyLabel.textContent = "Empty module";
     paletteActions.reset.textContent = "Use layer default";
   }
@@ -549,13 +562,13 @@ function openPalette(trigger, type, index) {
     const key = cellKey(paletteTarget.ring, paletteTarget.segment);
     cellEditor.empty.checked = emptyGroups.has(paletteTarget.segment) || emptyCells.has(key);
     cellEditor.empty.disabled = emptyGroups.has(paletteTarget.segment);
-    cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key);
+    cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key) && !patternFills.has(patternKey(paletteTarget));
     paletteActions.emptyLabel.textContent = designTypeSelect.value === "concentric" ? "Empty section" : "Empty " + objectName();
     paletteActions.reset.textContent = "Use " + objectName() + " default";
   } else if (type === "group") {
     cellEditor.empty.checked = emptyGroups.has(index);
     cellEditor.empty.disabled = false;
-    cellEditor.reset.disabled = groupColours[index] === defaultColourFor(index);
+    cellEditor.reset.disabled = groupColours[index].toUpperCase() === defaultColourFor(index).toUpperCase() && !patternFills.has(patternKey(paletteTarget));
     paletteActions.emptyLabel.textContent = designTypeSelect.value === "concentric" ? "Empty entire group" : "Empty " + objectName();
     paletteActions.reset.textContent = "Reset colour";
   }
@@ -600,6 +613,7 @@ function openPalette(trigger, type, index) {
     paletteGrid.append(row);
   });
   palettePopover.hidden = false;
+  openFillEditor(paletteTarget);
   positionPalette();
   const selectedSwatch = paletteGrid.querySelector('[aria-checked="true"]');
   (selectedSwatch || paletteGrid.querySelector(".palette-option")).focus();
@@ -744,6 +758,7 @@ function createRadiatingBands(settings) {
     return {
       ring: 0,
       segment: segment,
+      patternX:anchorX, patternY:baseline, patternRotation:angle,
       d: ["M " + pointString(baseLeft), "L " + pointString(baseRight), "L " + pointString(topRight), "L " + pointString(topLeft), "Z"].join(" "),
       fill: cellColor(settings, 0, segment),
       offset: segmentOffsets.get(segment) || { x: 0, y: 0 }
@@ -782,7 +797,7 @@ function createInterlockingCircles(settings) {
     const left = pointString({ x: circle.x - circle.r, y: circle.y });
     const right = pointString({ x: circle.x + circle.r, y: circle.y });
     const r = rounded(circle.r);
-    return { ring: 0, segment: segment,
+    return { ring: 0, segment: segment, patternX:circle.x, patternY:circle.y, patternRotation:0,
       d: "M " + left + " A " + r + " " + r + " 0 1 0 " + right + " A " + r + " " + r + " 0 1 0 " + left + " Z",
       fill: cellColor(settings, 0, segment),
       offset: segmentOffsets.get(segment) || { x: 0, y: 0 } };
@@ -790,6 +805,7 @@ function createInterlockingCircles(settings) {
 }
 
 function render() {
+  beginPatternRender();
   const settings = readSettings();
   if (settings.type === "triangular") { renderTriangular(settings); return; }
   if (settings.type === "modular") { renderModular(settings); return; }
@@ -833,6 +849,7 @@ function render() {
         drawnSegments.push({
           ring: ring,
           segment: segment,
+          patternRotation: groupRotation + ring * offset,
           d: createRingSegment(outer, inner, start, end),
           fill: cellColor(settings, ring, segment),
           offset: segmentOffsets.get(segment) || { x: 0, y: 0 }
@@ -845,7 +862,10 @@ function render() {
   drawnSegments.forEach(function (item) {
     const path = document.createElementNS(SVG_NS, "path");
     path.setAttribute("d", item.d);
-    path.setAttribute("fill", item.fill);
+    path.setAttribute("fill", svgPatternFill("cell:"+item.ring+":"+item.segment,item.fill,{
+      x:item.patternX??CENTER,y:item.patternY??CENTER,rotation:item.patternRotation??(segmentRotations.get(item.segment)||0),
+      offsetX:item.offset.x,offsetY:item.offset.y
+    }));
     path.setAttribute("transform", "translate(" + item.offset.x + " " + item.offset.y + ")");
     path.setAttribute("fill-rule", "evenodd");
     path.dataset.ring = String(item.ring + 1);
@@ -911,7 +931,7 @@ function render() {
     core.setAttribute("cx", String(CENTER + settings.dotX));
     core.setAttribute("cy", String(CENTER + settings.dotY));
     core.setAttribute("r", String(rounded(dotRadius)));
-    core.setAttribute("fill", settings.dotColor);
+    core.setAttribute("fill", svgPatternFill("dot",settings.dotColor,{x:CENTER+settings.dotX,y:CENTER+settings.dotY}));
     art.append(core);
   }
 
@@ -937,6 +957,7 @@ function render() {
   outputs.dotY.value = settings.dotY + " units";
   const itemName = objectName(settings.type);
   updateColourTrigger(controls.dotColor, settings.dotColor, "Centre dot colour");
+  paintFillSwatch(controls.dotColor,"dot");
   document.querySelector("#shape-count").textContent = settings.type !== "concentric"
     ? settings.segments + " " + itemName + "s"
     : settings.rings + (settings.rings === 1 ? " ring" : " rings");
@@ -1012,6 +1033,7 @@ function renderSegmentEditor(settings) {
       cell.setAttribute("aria-label", independent
         ? labelName + " " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment))
         : "Ring " + (ring + 1) + ", group " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
+      paintFillSwatch(cell,"cell:"+ring+":"+segment);
       cell.setAttribute("aria-pressed", String(selectedCell.ring === ring && selectedCell.segment === segment));
       if (selectedCell.ring === ring && selectedCell.segment === segment) cell.classList.add("is-selected");
       cell.addEventListener("click", function () { selectCell(ring, segment); });
@@ -1120,16 +1142,19 @@ function buildPresetPayload() {
   const settings = readSettings();
   if (settings.type === "triangular") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "triangular", randomSeed: compositionSeed,
+    patterns: clonePatternFills(),
     settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background},
     triangular: triangleClone()
   };
   if (settings.type === "modular") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "modular", randomSeed: compositionSeed,
+    patterns: clonePatternFills(),
     settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, overlapMode: settings.overlapMode},
     modular: modularClone()
   };
   if (settings.type === "contour") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "contour", randomSeed: compositionSeed,
+    patterns: clonePatternFills(),
     settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background},
     contour: contourClone()
   };
@@ -1138,6 +1163,7 @@ function buildPresetPayload() {
     version: 2,
     designType: settings.type,
     randomSeed: compositionSeed,
+    patterns: clonePatternFills(),
     settings: {
       rings: settings.rings,
       groups: settings.segments,
@@ -1211,6 +1237,7 @@ function isBrandColour(value) {
 }
 
 function validatePresetPayload(payload) {
+  if (payload && !validPatternFills(payload.patterns,payload.designType)) throw new Error("This preset has unsupported pattern fills.");
   if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "triangular") {
     if (!validTriangularPreset(payload)) throw new Error("This triangular preset has unsupported settings or geometry.");
     return payload;
@@ -1294,18 +1321,19 @@ function validatePresetPayload(payload) {
 function applyPresetPayload(payload) {
   const settings = payload.settings;
   setDesignType(payload.designType, true, false);
+  restorePatternFills(payload.patterns);
   if (payload.designType === "triangular") {
-    applyTriangularCandidate({triangular: payload.triangular, seed: payload.randomSeed,
+    applyTriangularCandidate({triangular: payload.triangular, seed: payload.randomSeed, patterns: payload.patterns,
       settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background}});
     return;
   }
   if (payload.designType === "modular") {
-    applyModularCandidate({modular: payload.modular, seed: payload.randomSeed,
+    applyModularCandidate({modular: payload.modular, seed: payload.randomSeed, patterns: payload.patterns,
       settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background, overlapMode: settings.overlapMode}});
     return;
   }
   if (payload.designType === "contour") {
-    applyContourCandidate({contour: payload.contour, seed: payload.randomSeed,
+    applyContourCandidate({contour: payload.contour, seed: payload.randomSeed, patterns: payload.patterns,
       settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background}});
     return;
   }
@@ -1838,6 +1866,7 @@ function evaluateRadiatingCandidate(candidate) {
 }
 
 function applySurpriseCandidate(candidate) {
+  restorePatternFills(candidate.patterns);
   if (candidate.type === "triangular") { applyTriangularCandidate(candidate); return; }
   if (candidate.type === "modular") { applyModularCandidate(candidate); return; }
   if (candidate.type === "contour") { applyContourCandidate(candidate); return; }
@@ -1893,6 +1922,12 @@ function applySurpriseCandidate(candidate) {
 }
 
 function harmoniousComposition(type) {
+  const candidate = baseHarmoniousComposition(type);
+  candidate.patterns = randomCandidatePatterns(candidate);
+  return candidate;
+}
+
+function baseHarmoniousComposition(type) {
   if (type === "triangular") {
     const candidate = chooseHarmoniousCandidate(createTriangularCandidate, evaluateTriangularCandidate, 16, 0.72);
     if (candidate.quality.valid) return candidate;
@@ -2036,6 +2071,7 @@ attachNumericInputs();
 initContour();
 initModular();
 initTriangular();
+initFillEditor();
 cellEditor.empty.addEventListener("change", function () {
   if (!paletteTarget) return;
   if (paletteTarget.type === "triangular") {
@@ -2063,7 +2099,7 @@ cellEditor.empty.addEventListener("change", function () {
     const key = cellKey(paletteTarget.ring, paletteTarget.segment);
     if (cellEditor.empty.checked) emptyCells.add(key);
     else emptyCells.delete(key);
-    cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key);
+    cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key) && !patternFills.has(patternKey(paletteTarget));
   } else {
     return;
   }
@@ -2082,6 +2118,7 @@ cellEditor.empty.addEventListener("change", function () {
 cellEditor.reset.addEventListener("click", function () {
   if (!paletteTarget) return;
   const target = paletteTarget;
+  if (patternEligible(target)) patternFills.delete(patternKey(target));
   if (target.type === "triangular") {
     resetTriangle(target.index);
     closePalette(false);
