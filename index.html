@@ -51,6 +51,10 @@
           <span class="gallery-art"><img alt="" id="gallery-radiating"></span>
           <span class="gallery-card-details"><span><strong>Radiating composition</strong><small>Bands, angles and intersections</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
         </button>
+        <button class="gallery-card" type="button" data-design="interlocking">
+          <span class="gallery-art"><img alt="" id="gallery-interlocking"></span>
+          <span class="gallery-card-details"><span><strong>Interlocking composition</strong><small>Overlaps, circles and intersections</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
+        </button>
         <div class="gallery-card is-unavailable">
           <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><circle cx="165" cy="165" r="100" fill="#a7a8a9"/><circle cx="165" cy="435" r="100" fill="#cacbcb"/><path d="M310 65H535V265Z" fill="#7c7e7f"/><path d="M310 335H535A112.5 112.5 0 0 1 310 335" fill="#a7a8a9"/></svg></span>
           <span class="gallery-card-details"><span><strong>Modular composition</strong><small>Geometric fields and intersections</small></span><span class="coming-soon">Coming soon</span></span>
@@ -59,16 +63,12 @@
           <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><g fill="none" stroke="#a7a8a9" stroke-width="34"><circle cx="0" cy="600" r="490"/><circle cx="0" cy="600" r="425"/><circle cx="0" cy="600" r="360"/><circle cx="0" cy="600" r="295"/></g></svg></span>
           <span class="gallery-card-details"><span><strong>Cropped composition</strong><small>Oversized shapes and negative space</small></span><span class="coming-soon">Coming soon</span></span>
         </div>
-        <div class="gallery-card is-unavailable">
-          <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><path d="M265 100A200 200 0 0 0 265 500Z" fill="#a7a8a9"/><path d="M335 100H535V500H335V385A85 85 0 0 0 335 215Z" fill="#7c7e7f"/><circle cx="335" cy="300" r="46" fill="#cacbcb"/></svg></span>
-          <span class="gallery-card-details"><span><strong>Interlocking composition</strong><small>Overlaps, cutouts and compound shapes</small></span><span class="coming-soon">Coming soon</span></span>
-        </div>
       </div>
       <footer class="page-footer"><span>Pressbooks Shapes</span><span>Composition library</span></footer>
     </main>
     <main id="main" class="layout" hidden>
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option><option disabled>Interlocking · coming soon</option></select></h1>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option></select></h1>
         <p id="intro-description">Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
@@ -108,6 +108,14 @@
             <div class="control-group"><div class="control-label"><label for="band-length">Band length</label><output id="band-length-output" for="band-length">480 px</output></div><input id="band-length" name="band-length" type="range" min="140" max="520" value="480" step="10"><div class="range-ends"><span>Short</span><span>Long</span></div></div>
             <div class="control-group"><div class="control-label"><label for="band-width">Band width</label><output id="band-width-input-output" for="band-width">32 px</output></div><input id="band-width" name="band-width" type="range" min="8" max="72" value="32" step="2"><div class="range-ends"><span>Fine</span><span>Broad</span></div></div>
             <div class="control-group"><div class="control-label"><label for="baseline-y">Baseline position</label><output id="baseline-y-output" for="baseline-y">600 px</output></div><input id="baseline-y" name="baseline-y" type="range" min="280" max="600" value="600" step="10"><div class="range-ends"><span>Up</span><span>Down</span></div></div>
+          </div>
+          <div id="interlocking-controls" hidden>
+            <h3 class="control-section-title">Composition</h3>
+            <div class="control-group"><div class="control-label"><label for="circle-count">Circles</label><output id="circle-count-output"></output></div><input id="circle-count" type="range" min="2" max="8" value="3" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="circle-diameter">Diameter</label><output id="circle-diameter-output"></output></div><input id="circle-diameter" type="range" min="40" max="600" value="340" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="circle-spacing">Spacing</label><output id="circle-spacing-output"></output></div><input id="circle-spacing" type="range" min="5" max="150" value="65" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="circle-arrangement">Arrangement</label></div><select id="circle-arrangement" class="arrangement-select"><option value="linear">Linear</option><option value="alternating">Alternating</option><option value="circular">Circular</option></select></div>
+            <button type="button" class="reset-position-button" id="reference-circles"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
           </div>
           <fieldset class="overlap-mode-control">
             <legend>Overlap treatment</legend>
@@ -164,9 +172,12 @@
                     <label class="position-axis" for="segment-y"><span>Vertical</span><output id="segment-y-output" for="segment-y">0 units</output></label>
                     <input id="segment-y" name="segment-y" type="range" min="-100" max="100" value="0" step="1">
                     <div class="range-ends"><span>Up</span><span>Down</span></div>
+                    <div id="object-rotation">
                     <label class="position-axis" for="group-rotation"><span id="rotation-label">Group rotation</span><output id="group-rotation-output" for="group-rotation">0°</output></label>
                     <input id="group-rotation" name="group-rotation" type="range" min="-180" max="180" value="0" step="1">
                     <div class="range-ends"><span>Counter-clockwise</span><span>Clockwise</span></div>
+                    </div>
+                    <div id="object-diameter" hidden><label class="position-axis" for="circle-size"><span>Diameter</span><output id="circle-size-output"></output></label><input id="circle-size" type="range" min="25" max="200" value="100" step="1"></div>
                   </div>
                 </div>
               </div>
