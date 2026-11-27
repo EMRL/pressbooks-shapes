@@ -10,11 +10,17 @@ const BRAND_PALETTE = [
 ];
 const DEFAULT_GROUP_COLOURS = ["#bb2026", "#5da3b2", "#f4af23", "#00a47d"];
 const RADIATING_DEFAULT_COLOURS = ["#ccede5", "#cacbcb", "#bb2026", "#5da3b2", "#f4af23", "#99dbcb"];
+const INTERLOCKING_DEFAULT_COLOURS = ["#9ec8d1", "#bb2026", "#66c8b1"];
 const groupColours = DEFAULT_GROUP_COLOURS.slice();
 const designTypeSelect = document.querySelector("#design-type");
 const concentricControls = document.querySelector("#concentric-controls");
 const radiatingControls = document.querySelector("#radiating-controls");
+const interlockingControls = document.querySelector("#interlocking-controls");
 const controls = {
+  circleCount: document.querySelector("#circle-count"),
+  circleDiameter: document.querySelector("#circle-diameter"),
+  circleSpacing: document.querySelector("#circle-spacing"),
+  circleArrangement: document.querySelector("#circle-arrangement"),
   rings: document.querySelector("#rings"),
   segments: document.querySelector("#segments"),
   spacing: document.querySelector("#spacing"),
@@ -38,6 +44,9 @@ const controls = {
   overlapModes: Array.from(document.querySelectorAll('input[name="overlap-mode"]'))
 };
 const outputs = {
+  circleCount: document.querySelector("#circle-count-output"),
+  circleDiameter: document.querySelector("#circle-diameter-output"),
+  circleSpacing: document.querySelector("#circle-spacing-output"),
   rings: document.querySelector("#rings-output"),
   segments: document.querySelector("#segments-output"),
   spacing: document.querySelector("#spacing-output"),
@@ -92,17 +101,26 @@ const emptyCells = new Set();
 const emptyGroups = new Set();
 const segmentOffsets = new Map();
 const segmentRotations = new Map();
+const circleSizes = new Map();
 const rangeNumbers = new Map();
 let selectedCell = { ring: 0, segment: 0 };
 let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
-const designSnapshots = { concentric: null, radiating: null };
+const designSnapshots = { concentric: null, radiating: null, interlocking: null };
 let activeDesignType = designTypeSelect.value;
 
+function objectName(type = designTypeSelect.value) {
+  return type === "interlocking" ? "circle" : type === "radiating" ? "band" : "group";
+}
+
+function defaultColours(type) {
+  return type === "interlocking" ? INTERLOCKING_DEFAULT_COLOURS : type === "radiating" ? RADIATING_DEFAULT_COLOURS : DEFAULT_GROUP_COLOURS;
+}
+
 function defaultColourFor(index, type) {
-  const colours = (type || designTypeSelect.value) === "radiating" ? RADIATING_DEFAULT_COLOURS : DEFAULT_GROUP_COLOURS;
+  const colours = defaultColours(type || designTypeSelect.value);
   return colours[index % colours.length];
 }
 
@@ -130,6 +148,7 @@ function captureDesignState() {
     emptyGroups: new Set(emptyGroups),
     segmentOffsets: new Map(segmentOffsets),
     segmentRotations: new Map(segmentRotations),
+    circleSizes: new Map(circleSizes),
     selectedCell: { ...selectedCell },
     activeGroup: activeGroup,
     compositionSeed: compositionSeed
@@ -162,41 +181,45 @@ function restoreDesignState(snapshot) {
   snapshot.segmentOffsets.forEach(function (value, key) { segmentOffsets.set(key, value); });
   segmentRotations.clear();
   snapshot.segmentRotations.forEach(function (value, key) { segmentRotations.set(key, value); });
+  circleSizes.clear();
+  snapshot.circleSizes.forEach(function (value, key) { circleSizes.set(key, value); });
   selectedCell = { ...snapshot.selectedCell };
   activeGroup = snapshot.activeGroup;
   compositionSeed = snapshot.compositionSeed;
 }
 
 function updateDesignChrome() {
-  const radiating = designTypeSelect.value === "radiating";
-  concentricControls.hidden = radiating;
+  const type = designTypeSelect.value;
+  const radiating = type === "radiating";
+  const interlocking = type === "interlocking";
+  const singular = objectName(type);
+  const name = singular[0].toUpperCase() + singular.slice(1);
+  concentricControls.hidden = type !== "concentric";
   radiatingControls.hidden = !radiating;
-  document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = radiating; });
-  const title = radiating ? "Radiating composition" : "Concentric composition";
-  document.querySelector("#group-editor-tab").textContent = radiating ? "Band editor" : "Group editor";
-  document.querySelector(".group-panel-help").textContent = radiating
-    ? "Select a band to adjust its colour, position, or visibility."
-    : "Select a group or ring section to adjust its colour, position, or visibility.";
-  document.querySelector("#overlap-help").textContent = radiating
-    ? "Choose how bands interact where they cross."
-    : "Choose how groups interact where they cross.";
-  document.querySelector("#overlap-standard-help").textContent = radiating
-    ? "Draw bands over one another."
-    : "Draw groups over one another.";
-  document.querySelector("#rotation-label").textContent = radiating ? "Band rotation" : "Group rotation";
+  interlockingControls.hidden = !interlocking;
+  document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = type !== "concentric"; });
+  document.querySelector("#object-rotation").hidden = interlocking;
+  document.querySelector("#object-diameter").hidden = !interlocking;
+  const title = interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
+  document.querySelector("#group-editor-tab").textContent = name + " editor";
+  document.querySelector(".group-panel-help").textContent = type === "concentric"
+    ? "Select a group or ring section to adjust its colour, position, or visibility."
+    : "Select a " + singular + " to adjust its colour, position, or visibility.";
+  document.querySelector("#overlap-help").textContent = "Choose how " + singular + "s interact where they cross.";
+  document.querySelector("#overlap-standard-help").textContent = "Draw " + singular + "s over one another.";
+  document.querySelector("#rotation-label").textContent = name + " rotation";
   const rotationNumber = rangeNumbers.get("group-rotation");
-  if (rotationNumber) rotationNumber.setAttribute("aria-label", (radiating ? "Band" : "Group") + " rotation numeric value");
+  if (rotationNumber) rotationNumber.setAttribute("aria-label", name + " rotation numeric value");
   document.title = "Pressbooks Shapes · " + title;
-  document.querySelector('meta[name="description"]').setAttribute("content", radiating
-    ? "Arrange radiating bands and export them as SVG."
-    : "Build precise concentric compositions and export them as SVG.");
-  document.querySelector("#intro-description").textContent = radiating
-    ? "Arrange radiating bands, refine the details, and download your SVG."
+  document.querySelector('meta[name="description"]').setAttribute("content", title + " design and SVG export.");
+  document.querySelector("#intro-description").textContent = interlocking
+    ? "Arrange overlapping circles, refine the details, and download your SVG."
+    : radiating ? "Arrange radiating bands, refine the details, and download your SVG."
     : "Arrange concentric groups, refine the details, and download your SVG.";
   document.querySelector("#preview-type-label").textContent = title;
   document.querySelector("#shape-title").textContent = title + " preview";
   document.querySelector("#footer-design-label").textContent = title + " · SVG export";
-  segmentGrid.setAttribute("aria-label", radiating ? "Band colour grid" : "Ring and object group colour grid");
+  segmentGrid.setAttribute("aria-label", type === "concentric" ? "Ring and object group colour grid" : name + " colour grid");
 }
 
 function setDesignType(type, saveCurrent, restoreTarget) {
@@ -215,12 +238,13 @@ function setDesignType(type, saveCurrent, restoreTarget) {
   if (restoreTarget !== false && designSnapshots[type]) {
     restoreDesignState(designSnapshots[type]);
   } else if (restoreTarget !== false) {
-    groupColours.splice(0, groupColours.length, ...(type === "radiating" ? RADIATING_DEFAULT_COLOURS : DEFAULT_GROUP_COLOURS));
+    groupColours.splice(0, groupColours.length, ...defaultColours(type));
     cellColors.clear();
     emptyCells.clear();
     emptyGroups.clear();
     segmentOffsets.clear();
     segmentRotations.clear();
+    circleSizes.clear();
     compositionSeed = 4821;
   }
   selectedCell = { ring: 0, segment: 0 };
@@ -324,7 +348,7 @@ function groupIconColour(hex) {
 updateColourTrigger(controls.dotColor, "#a7a8a9", "Centre dot colour");
 
 function renderGroupSwatches(count) {
-  const itemName = designTypeSelect.value === "radiating" ? "band" : "group";
+  const itemName = objectName();
   while (groupColours.length < count) {
     groupColours.push(defaultColourFor(groupColours.length));
   }
@@ -449,13 +473,13 @@ function openPalette(trigger, type, index) {
     cellEditor.empty.checked = emptyGroups.has(paletteTarget.segment) || emptyCells.has(key);
     cellEditor.empty.disabled = emptyGroups.has(paletteTarget.segment);
     cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key);
-    paletteActions.emptyLabel.textContent = designTypeSelect.value === "radiating" ? "Empty band" : "Empty section";
-    paletteActions.reset.textContent = designTypeSelect.value === "radiating" ? "Use band default" : "Use group default";
+    paletteActions.emptyLabel.textContent = designTypeSelect.value === "concentric" ? "Empty section" : "Empty " + objectName();
+    paletteActions.reset.textContent = "Use " + objectName() + " default";
   } else if (type === "group") {
     cellEditor.empty.checked = emptyGroups.has(index);
     cellEditor.empty.disabled = false;
     cellEditor.reset.disabled = groupColours[index] === defaultColourFor(index);
-    paletteActions.emptyLabel.textContent = designTypeSelect.value === "radiating" ? "Empty band" : "Empty entire group";
+    paletteActions.emptyLabel.textContent = designTypeSelect.value === "concentric" ? "Empty entire group" : "Empty " + objectName();
     paletteActions.reset.textContent = "Reset colour";
   }
   const selected = targetColour(paletteTarget).toUpperCase();
@@ -586,19 +610,24 @@ function createRingSegment(outerRadius, innerRadius, startAngle, endAngle) {
 function readSettings() {
   const type = designTypeSelect.value;
   const radiating = type === "radiating";
+  const interlocking = type === "interlocking";
+  const count = interlocking ? Number(controls.circleCount.value) : radiating ? Number(controls.bandCount.value) : Number(controls.segments.value);
   return {
     type: type,
-    rings: radiating ? 1 : Number(controls.rings.value),
-    segments: radiating ? Number(controls.bandCount.value) : Number(controls.segments.value),
+    rings: type === "concentric" ? Number(controls.rings.value) : 1,
+    segments: count,
+    circleDiameter: Number(controls.circleDiameter.value),
+    circleSpacing: Number(controls.circleSpacing.value),
+    circleArrangement: controls.circleArrangement.value,
     spacing: Number(controls.spacing.value),
     clearance: Number(controls.clearance.value) / 100,
     dotSize: Number(controls.dotSize.value) / 100,
     variation: Number(controls.variation.value) / 100,
     scale: Number(controls.scale.value) / 100,
     rotation: Number(controls.rotation.value),
-    colors: groupColours.slice(0, radiating ? Number(controls.bandCount.value) : Number(controls.segments.value)).map(function (hex) { return hex.toUpperCase(); }),
+    colors: Array.from({ length: count }, function (_, index) { return (groupColours[index] || defaultColourFor(index, type)).toUpperCase(); }),
     dotColor: controls.dotColor.dataset.color.toUpperCase(),
-    dotVisible: !radiating && controls.dotVisible.checked,
+    dotVisible: type === "concentric" && controls.dotVisible.checked,
     dotX: Number(controls.dotX.value),
     dotY: Number(controls.dotY.value),
     background: controls.background.checked,
@@ -645,8 +674,47 @@ function createRadiatingBands(settings) {
   }).filter(Boolean);
 }
 
+function circleGeometry(settings, segment, seed, sizes) {
+  const count = settings.segments;
+  const diameter = settings.circleDiameter * settings.scale;
+  const distance = diameter * settings.circleSpacing / 100;
+  const midpoint = (count - 1) / 2;
+  let x = (segment - midpoint) * distance;
+  let y = 0;
+  if (settings.circleArrangement === "alternating") {
+    const mean = (count % 2) / count;
+    y = ((segment % 2 ? 1 : -1) + mean) * diameter * 0.175;
+  } else if (settings.circleArrangement === "circular") {
+    const radius = distance / (2 * Math.sin(Math.PI / count));
+    const angle = -Math.PI / 2 + 2 * Math.PI * segment / count;
+    x = Math.cos(angle) * radius;
+    y = Math.sin(angle) * radius;
+  }
+  const variation = settings.variation;
+  x += (seededUnit(segment + 71, seed) - 0.5) * variation * diameter * 0.35;
+  y += (seededUnit(segment + 83, seed) - 0.5) * variation * diameter * 0.35;
+  const r = diameter / 2 * (sizes.get(segment) || 100) / 100
+    * (1 + (seededUnit(segment + 97, seed) - 0.5) * variation * 0.6);
+  return { x: CENTER + x, y: CENTER + y, r };
+}
+
+function createInterlockingCircles(settings) {
+  return Array.from({ length: settings.segments }, function (_, segment) {
+    if (emptyGroups.has(segment) || emptyCells.has(cellKey(0, segment))) return null;
+    const circle = circleGeometry(settings, segment, compositionSeed, circleSizes);
+    const left = pointString({ x: circle.x - circle.r, y: circle.y });
+    const right = pointString({ x: circle.x + circle.r, y: circle.y });
+    const r = rounded(circle.r);
+    return { ring: 0, segment: segment,
+      d: "M " + left + " A " + r + " " + r + " 0 1 0 " + right + " A " + r + " " + r + " 0 1 0 " + left + " Z",
+      fill: cellColor(settings, 0, segment),
+      offset: segmentOffsets.get(segment) || { x: 0, y: 0 } };
+  }).filter(Boolean);
+}
+
 function render() {
   const settings = readSettings();
+  activeGroup = Math.min(activeGroup, settings.segments - 1);
   renderGroupSwatches(settings.segments);
   selectedCell.ring = Math.min(selectedCell.ring, settings.rings - 1);
   selectedCell.segment = Math.min(selectedCell.segment, settings.segments - 1);
@@ -669,7 +737,7 @@ function render() {
     art.append(background);
   }
 
-  const drawnSegments = settings.type === "radiating" ? createRadiatingBands(settings) : [];
+  const drawnSegments = settings.type === "interlocking" ? createInterlockingCircles(settings) : settings.type === "radiating" ? createRadiatingBands(settings) : [];
   if (settings.type === "concentric") {
     for (let ring = 0; ring < settings.rings; ring += 1) {
       const outer = outerRadius - ring * (ringWidth + gap);
@@ -704,8 +772,8 @@ function render() {
     path.dataset.segment = String(item.segment + 1);
     path.setAttribute("role", "button");
     path.setAttribute("tabindex", "0");
-    path.setAttribute("aria-label", settings.type === "radiating"
-      ? "Band " + (item.segment + 1)
+    path.setAttribute("aria-label", settings.type !== "concentric"
+      ? objectName(settings.type) + " " + (item.segment + 1)
       : "Ring " + (item.ring + 1) + ", group " + (item.segment + 1));
     if (selectedCell.ring === item.ring && selectedCell.segment === item.segment) path.classList.add("is-selected");
     path.addEventListener("click", function () { selectCell(item.ring, item.segment); });
@@ -767,8 +835,11 @@ function render() {
     art.append(core);
   }
 
+  outputs.circleCount.value = settings.segments + " circles";
+  outputs.circleDiameter.value = settings.circleDiameter + " px";
+  outputs.circleSpacing.value = settings.circleSpacing + "% of diameter";
   outputs.rings.value = settings.rings + (settings.rings === 1 ? " ring" : " rings");
-  outputs.segments.value = settings.segments + (settings.type === "radiating" ? " bands" : settings.segments === 1 ? " group" : " groups");
+  outputs.segments.value = settings.segments + (settings.type !== "concentric" ? " " + objectName(settings.type) + "s" : settings.segments === 1 ? " group" : " groups");
   outputs.spacing.value = settings.spacing + " px";
   outputs.clearance.value = Math.round(settings.clearance * 100) + "% of radius";
   outputs.dotSize.value = Math.round(settings.dotSize * 100) + "% of diameter";
@@ -784,18 +855,18 @@ function render() {
   outputs.rotation.value = settings.rotation + "°";
   outputs.dotX.value = settings.dotX + " units";
   outputs.dotY.value = settings.dotY + " units";
-  const itemName = settings.type === "radiating" ? "Band" : "Group";
+  const itemName = objectName(settings.type);
   controls.colors.forEach(function (button, index) {
     updateColourTrigger(button, button.dataset.color, itemName + " " + (index + 1) + " default colour");
   });
   updateColourTrigger(controls.dotColor, settings.dotColor, "Centre dot colour");
-  document.querySelector("#shape-count").textContent = settings.type === "radiating"
-    ? settings.segments + " bands"
+  document.querySelector("#shape-count").textContent = settings.type !== "concentric"
+    ? settings.segments + " " + itemName + "s"
     : settings.rings + (settings.rings === 1 ? " ring" : " rings");
   document.querySelector("#variation-readout").textContent = Math.round(settings.variation * 100) + "% variation";
   stage.classList.toggle("has-background", settings.background);
-  preview.querySelector("#shape-desc").textContent = settings.type === "radiating"
-    ? settings.segments + " radiating bands with " + Math.round(settings.variation * 100) + " percent variation."
+  preview.querySelector("#shape-desc").textContent = settings.type !== "concentric"
+    ? settings.segments + " " + settings.type + " " + itemName + "s with " + Math.round(settings.variation * 100) + " percent variation."
     : settings.rings + " concentric rings arranged in " + settings.segments + " colour groups, with " + Math.round(settings.variation * 100) + " percent variation.";
   renderSegmentEditor(settings);
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
@@ -809,14 +880,17 @@ function render() {
 }
 
 function renderSegmentEditor(settings) {
-  const radiating = settings.type === "radiating";
-  document.querySelector("#segment-editor-title").textContent = radiating ? "Individual bands" : "Individual sections";
-  document.querySelector("#segment-editor-help").textContent = radiating
-    ? "Choose a band to adjust its colour, position, or visibility."
+  const independent = settings.type !== "concentric";
+  const unit = objectName(settings.type);
+  const labelName = unit[0].toUpperCase() + unit.slice(1);
+  document.querySelector("#segment-editor-title").textContent = independent ? "Individual " + unit + "s" : "Individual sections";
+  document.querySelector("#segment-editor-help").textContent = independent
+    ? "Choose a " + unit + " to adjust its colour or visibility."
     : "Choose a ring and group. Each section can use its own colour or be left empty.";
-  document.querySelector("#group-palette-legend").textContent = radiating ? "Default band colours" : "Default group colours";
-  document.querySelector("#position-help").textContent = radiating
-    ? "Move or rotate the selected band along the baseline."
+  document.querySelector("#group-palette-legend").textContent = "Default " + unit + " colours";
+  document.querySelector("#position-help").textContent = settings.type === "interlocking"
+    ? "Move or resize the selected circle."
+    : independent ? "Move or rotate the selected band along the baseline."
     : "Move or rotate every ring section in the active group.";
   selectedCell.ring = Math.min(selectedCell.ring, settings.rings - 1);
   selectedCell.segment = Math.min(selectedCell.segment, settings.segments - 1);
@@ -828,12 +902,12 @@ function renderSegmentEditor(settings) {
   heading.className = "segment-grid-row segment-grid-heading";
   const corner = document.createElement("span");
   corner.className = "segment-grid-label";
-  corner.textContent = radiating ? "Band" : "Ring";
+  corner.textContent = independent ? labelName : "Ring";
   heading.append(corner);
   for (let segment = 0; segment < settings.segments; segment += 1) {
     const label = document.createElement("span");
     label.className = "segment-column-label";
-    label.textContent = radiating ? String(segment + 1) : "G" + (segment + 1);
+    label.textContent = independent ? String(segment + 1) : "G" + (segment + 1);
     heading.append(label);
   }
   segmentGrid.append(heading);
@@ -843,7 +917,7 @@ function renderSegmentEditor(settings) {
     row.className = "segment-grid-row";
     const rowLabel = document.createElement("span");
     rowLabel.className = "segment-grid-label";
-    rowLabel.textContent = radiating ? "Colour" : String(ring + 1);
+    rowLabel.textContent = independent ? "Colour" : String(ring + 1);
     row.append(rowLabel);
 
     for (let segment = 0; segment < settings.segments; segment += 1) {
@@ -854,8 +928,8 @@ function renderSegmentEditor(settings) {
       cell.className = "segment-cell" + (empty ? " is-empty" : "");
       cell.style.setProperty("--cell-color", cellColor(settings, ring, segment));
       cell.textContent = empty ? "∅" : "";
-      cell.setAttribute("aria-label", radiating
-        ? "Band " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment))
+      cell.setAttribute("aria-label", independent
+        ? labelName + " " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment))
         : "Ring " + (ring + 1) + ", group " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
       cell.setAttribute("aria-pressed", String(selectedCell.ring === ring && selectedCell.segment === segment));
       if (selectedCell.ring === ring && selectedCell.segment === segment) cell.classList.add("is-selected");
@@ -865,11 +939,14 @@ function renderSegmentEditor(settings) {
     segmentGrid.append(row);
   }
 
-  cellEditor.label.textContent = radiating
-    ? "Band " + (selectedCell.segment + 1)
+  cellEditor.label.textContent = independent
+    ? labelName + " " + (selectedCell.segment + 1)
     : "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
   const position = segmentOffsets.get(activeGroup) || { x: 0, y: 0 };
-  cellEditor.positionTitle.textContent = (radiating ? "Band " : "Group ") + (activeGroup + 1);
+  cellEditor.positionTitle.textContent = labelName + " " + (activeGroup + 1);
+  const size = circleSizes.get(activeGroup) || 100;
+  document.querySelector("#circle-size").value = String(size);
+  document.querySelector("#circle-size-output").value = size + "% of diameter";
   cellEditor.x.value = String(position.x);
   cellEditor.y.value = String(position.y);
   const groupRotation = segmentRotations.get(activeGroup) || 0;
@@ -931,14 +1008,14 @@ function buildExportSvg() {
 
   const title = document.createElementNS(SVG_NS, "title");
   title.setAttribute("id", "export-title");
-  title.textContent = "Pressbooks Shapes " + (settings.type === "radiating" ? "radiating composition" : "concentric ring composition");
+  title.textContent = "Pressbooks Shapes " + (settings.type === "concentric" ? "concentric ring composition" : settings.type + " composition");
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
   const overlapDescription = settings.overlapMode === "transparent"
     ? " with overlapping areas removed"
     : settings.overlapMode === "multiply" ? " with overlapping colours multiplied" : "";
-  description.textContent = settings.type === "radiating"
-    ? settings.segments + " radiating bands" + overlapDescription + "."
+  description.textContent = settings.type !== "concentric"
+    ? settings.segments + " " + settings.type + " " + objectName(settings.type) + "s" + overlapDescription + "."
     : settings.rings + " concentric rings and " + settings.segments + " groups" + overlapDescription + ".";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
@@ -951,7 +1028,7 @@ function downloadSvg() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "pressbooks-" + (designTypeSelect.value === "radiating" ? "radiating-bands" : "concentric-rings") + ".svg";
+  anchor.download = "pressbooks-" + (designTypeSelect.value === "concentric" ? "concentric-rings" : designTypeSelect.value + "-" + objectName() + "s") + ".svg";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -982,6 +1059,9 @@ function buildPresetPayload() {
         bandWidthPx: settings.bandWidth,
         baselineY: settings.baselineY
       },
+      ...(settings.type === "interlocking" ? { interlocking: {
+        diameterPx: settings.circleDiameter, spacingPercent: settings.circleSpacing, arrangement: settings.circleArrangement
+      }} : {}),
       ...(settings.type === "concentric" ? { centreDot: {
         visible: settings.dotVisible,
         sizePercent: Math.round(settings.dotSize * 100),
@@ -999,6 +1079,7 @@ function buildPresetPayload() {
         horizontalOffset: offset.x,
         verticalOffset: offset.y,
         rotationDegrees: segmentRotations.get(segment) || 0,
+        ...(settings.type === "interlocking" ? { diameterPercent: circleSizes.get(segment) || 100 } : {}),
         sections: Array.from({ length: settings.rings }, function (__, ring) {
           const key = cellKey(ring, segment);
           return {
@@ -1035,7 +1116,7 @@ function isBrandColour(value) {
 
 function validatePresetPayload(payload) {
   const supportedDesign = payload && (payload.designType === "concentric"
-    || payload.version === 2 && payload.designType === "radiating");
+    || payload.version === 2 && ["radiating", "interlocking"].includes(payload.designType));
   if (!payload || payload.format !== "pressbooks-shapes-preset" || ![1, 2].includes(payload.version) || !supportedDesign) {
     throw new Error("Choose a supported Pressbooks Shapes preset JSON file.");
   }
@@ -1043,6 +1124,7 @@ function validatePresetPayload(payload) {
   const settings = payload.settings;
   const dot = settings && settings.centreDot;
   const radiating = settings && settings.radiating;
+  const interlocking = settings && settings.interlocking;
   const settingsValid = settings
     && isIntegerBetween(settings.rings, 1, 8)
     && isIntegerBetween(settings.groups, 1, 8)
@@ -1063,7 +1145,12 @@ function validatePresetPayload(payload) {
       && isIntegerBetween(radiating.bandLengthPx, 140, 520)
       && isIntegerBetween(radiating.bandWidthPx, 8, 72)
       && isIntegerBetween(radiating.baselineY, 280, 600))
-    && (payload.designType === "radiating" || dot
+    && (payload.designType !== "interlocking" || settings.rings === 1
+      && isIntegerBetween(settings.groups, 2, 8) && interlocking
+      && isIntegerBetween(interlocking.diameterPx, 40, 600)
+      && isIntegerBetween(interlocking.spacingPercent, 5, 150)
+      && ["linear", "alternating", "circular"].includes(interlocking.arrangement))
+    && (payload.designType !== "concentric" || dot
     && typeof dot.visible === "boolean"
     && isIntegerBetween(dot.sizePercent, 0, 30)
     && isBrandColour(dot.colour)
@@ -1082,6 +1169,7 @@ function validatePresetPayload(payload) {
       && isIntegerBetween(group.horizontalOffset, -100, 100)
       && isIntegerBetween(group.verticalOffset, -100, 100)
       && isIntegerBetween(group.rotationDegrees, -180, 180)
+      && (payload.designType !== "interlocking" || isIntegerBetween(group.diameterPercent, 25, 200))
       && Array.isArray(group.sections)
       && group.sections.length === settings.rings
       && group.sections.every(function (section, ring) {
@@ -1108,6 +1196,12 @@ function applyPresetPayload(payload) {
     controls.bandWidth.value = String(settings.radiating.bandWidthPx);
     controls.baselineY.value = String(settings.radiating.baselineY);
   }
+  if (payload.designType === "interlocking") {
+    controls.circleCount.value = String(settings.groups);
+    controls.circleDiameter.value = String(settings.interlocking.diameterPx);
+    controls.circleSpacing.value = String(settings.interlocking.spacingPercent);
+    controls.circleArrangement.value = settings.interlocking.arrangement;
+  }
   controls.spacing.value = String(settings.ringSpacingPx);
   controls.clearance.value = String(settings.innerClearancePercent);
   controls.variation.value = String(settings.variationPercent);
@@ -1132,12 +1226,14 @@ function applyPresetPayload(payload) {
   emptyGroups.clear();
   segmentOffsets.clear();
   segmentRotations.clear();
+  circleSizes.clear();
   payload.groups.forEach(function (group, segment) {
     if (group.empty) emptyGroups.add(segment);
     if (group.horizontalOffset || group.verticalOffset) {
       segmentOffsets.set(segment, { x: group.horizontalOffset, y: group.verticalOffset });
     }
     if (group.rotationDegrees) segmentRotations.set(segment, group.rotationDegrees);
+    if (payload.designType === "interlocking") circleSizes.set(segment, group.diameterPercent);
     group.sections.forEach(function (section, ring) {
       const key = cellKey(ring, segment);
       if (section.empty) emptyCells.add(key);
@@ -1178,6 +1274,7 @@ async function importPresetFile(file) {
 
 function createSurpriseCandidate(type = designTypeSelect.value) {
   if (type === "radiating") return createRadiatingCandidate();
+  if (type === "interlocking") return createInterlockingCandidate();
   const rings = randomInteger(3, 8);
   const segments = randomInteger(2, 8);
   const settings = {
@@ -1293,6 +1390,76 @@ function createRadiatingCandidate() {
     }
   }
   return candidate;
+}
+
+function createInterlockingCandidate(reference = false) {
+  const arrangement = reference ? "linear" : randomChoice(["linear", "linear", "alternating", "circular"]);
+  const segments = reference ? 3 : randomInteger(2, arrangement === "circular" ? 8 : 6);
+  const settings = {
+    type: "interlocking", rings: 1, segments,
+    circleDiameter: reference ? 340 : randomInteger(150, 430, 10),
+    circleSpacing: reference ? 65 : randomInteger(40, 95, 5),
+    circleArrangement: arrangement,
+    variation: reference ? 0 : randomChoice([0, 0, 5, 10, 15, 25]),
+    scale: reference ? 100 : randomInteger(85, 115, 5),
+    rotation: reference ? 0 : randomChoice([0, 0, 30, 45, 90, 135, 180, 270]),
+    background: reference || Math.random() < 0.35,
+    overlapMode: reference ? "multiply" : randomChoice(["multiply", "multiply", "normal", "transparent"])
+  };
+  const families = shuffled(BRAND_PALETTE).slice(0, Math.min(segments, randomInteger(2, 4)));
+  const colours = reference ? INTERLOCKING_DEFAULT_COLOURS.slice() : Array.from({ length: segments }, function (_, i) {
+    const family = families[i % families.length];
+    return family.values.find(function (entry) { return entry[0] === "100"; })[1];
+  });
+  const candidate = { type: "interlocking", settings, colours,
+    cellColours: new Map(), emptyCells: new Set(), emptyGroups: new Set(),
+    groupOffsets: new Map(), groupRotations: new Map(), circleSizes: new Map(),
+    seed: reference ? 4821 : randomInteger(1, 1000000000) };
+  if (!reference && Math.random() < 0.35) {
+    const index = randomInteger(0, segments - 1);
+    candidate.circleSizes.set(index, randomInteger(75, 125, 5));
+  }
+  return candidate;
+}
+
+function evaluateInterlockingCandidate(candidate) {
+  const raw = candidate.settings;
+  const settings = { ...raw, scale: raw.scale / 100, variation: raw.variation / 100 };
+  const circles = Array.from({ length: settings.segments }, function (_, i) {
+    return circleGeometry(settings, i, candidate.seed, candidate.circleSizes);
+  });
+  const angle = -settings.rotation * Math.PI / 180;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const grid = 32;
+  let painted = 0, totalCovered = 0, overlap = 0, sx = 0, sy = 0;
+  const visible = new Set();
+  for (let row = 0; row < grid; row++) {
+    for (let col = 0; col < grid; col++) {
+      const x = (col + .5) * 600 / grid, y = (row + .5) * 600 / grid;
+      const dx = x - CENTER, dy = y - CENTER;
+      const ax = CENTER + dx * cos - dy * sin, ay = CENTER + dx * sin + dy * cos;
+      let hits = 0;
+      circles.forEach(function (circle, i) {
+        if ((ax - circle.x) ** 2 + (ay - circle.y) ** 2 <= circle.r ** 2) { hits++; visible.add(i); }
+      });
+      if (hits) totalCovered++;
+      if (hits > 1) overlap++;
+      if (settings.overlapMode === "transparent" ? hits !== 1 : hits === 0) continue;
+      painted++; sx += x; sy += y;
+    }
+  }
+  const coverage = painted / (grid * grid);
+  const overlapShare = overlap / Math.max(1, totalCovered);
+  const centroid = painted ? Math.hypot(sx / painted - CENTER, sy / painted - CENTER) / CENTER : 1;
+  const radii = circles.map(c => c.r);
+  const consistency = Math.min(...radii) / Math.max(...radii);
+  return scoreDesignCandidate({
+    palette: scorePaletteHarmony(candidate),
+    balance: clamp01(1 - centroid / .35),
+    negativeSpace: clamp01(1 - Math.abs(coverage - .48) / .48),
+    restraint: .55 * consistency + .45 * clamp01(1 - Math.abs(overlapShare - .25) / .5),
+    valid: visible.size === settings.segments && coverage >= .12 && coverage <= .82 && overlapShare >= .04 && overlapShare <= .65
+  });
 }
 
 function paletteEntry(hex) {
@@ -1546,7 +1713,12 @@ function evaluateRadiatingCandidate(candidate) {
 
 function applySurpriseCandidate(candidate) {
   const settings = candidate.settings;
-  if (candidate.type === "radiating") {
+  if (candidate.type === "interlocking") {
+    controls.circleCount.value = String(settings.segments);
+    controls.circleDiameter.value = String(settings.circleDiameter);
+    controls.circleSpacing.value = String(settings.circleSpacing);
+    controls.circleArrangement.value = settings.circleArrangement;
+  } else if (candidate.type === "radiating") {
     controls.bandCount.value = String(settings.segments);
     controls.bandSpan.value = String(settings.bandSpan);
     controls.fanAngle.value = String(settings.fanAngle);
@@ -1583,6 +1755,8 @@ function applySurpriseCandidate(candidate) {
   candidate.groupOffsets.forEach(function (offset, group) { segmentOffsets.set(group, offset); });
   segmentRotations.clear();
   candidate.groupRotations.forEach(function (rotation, group) { segmentRotations.set(group, rotation); });
+  circleSizes.clear();
+  candidate.circleSizes?.forEach(function (size, index) { circleSizes.set(index, size); });
   compositionSeed = candidate.seed;
   selectedCell = { ring: 0, segment: 0 };
   activeGroup = 0;
@@ -1590,24 +1764,30 @@ function applySurpriseCandidate(candidate) {
 }
 
 function harmoniousComposition(type) {
-  return chooseHarmoniousCandidate(
+  const candidate = chooseHarmoniousCandidate(
     function () { return createSurpriseCandidate(type); },
-    type === "radiating" ? evaluateRadiatingCandidate : evaluateConcentricCandidate,
+    type === "interlocking" ? evaluateInterlockingCandidate : type === "radiating" ? evaluateRadiatingCandidate : evaluateConcentricCandidate,
     16,
     0.72
   );
+  if (type === "interlocking" && !candidate.quality.valid) {
+    const fallback = createInterlockingCandidate(true);
+    fallback.quality = evaluateInterlockingCandidate(fallback);
+    return fallback;
+  }
+  return candidate;
 }
 
 function generateSurprise() {
   closePalette(false);
   pendingGroupIndex = null;
   groupInspector.classList.remove("is-fading-out");
-  const radiating = designTypeSelect.value === "radiating";
+  const independent = designTypeSelect.value !== "concentric";
   const candidate = harmoniousComposition(designTypeSelect.value);
   applySurpriseCandidate(candidate);
   const settings = candidate.settings;
-  document.querySelector("#surprise-status").textContent = radiating
-    ? "New composition generated with " + settings.segments + " bands. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100."
+  document.querySelector("#surprise-status").textContent = independent
+    ? "New composition generated with " + settings.segments + " " + objectName() + "s. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100."
     : "New composition generated with " + settings.rings + " rings and " + settings.segments + " groups. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100.";
 }
 
@@ -1667,6 +1847,16 @@ function updateSegmentRotation(value) {
   render();
 }
 cellEditor.rotation.addEventListener("input", function () { updateSegmentRotation(cellEditor.rotation.value); });
+document.querySelector("#circle-size").addEventListener("input", function (event) {
+  circleSizes.set(activeGroup, Number(event.target.value));
+  render();
+});
+document.querySelector("#reference-circles").addEventListener("click", function () {
+  closePalette(false);
+  pendingGroupIndex = null;
+  groupInspector.classList.remove("is-fading-out");
+  applySurpriseCandidate(createInterlockingCandidate(true));
+});
 
 function updateSegmentOffset(axis, value) {
   const current = segmentOffsets.get(activeGroup) || { x: 0, y: 0 };
