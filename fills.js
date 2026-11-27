@@ -16,7 +16,7 @@ function patternKey(target) {
   if(target.type==="dot")return "dot";
   return target.type+":"+target.index;
 }
-function patternEligible(target) { return target.type!=="orbital" && (target.type!=="contour" || String(target.index).startsWith("accent:")); }
+function patternEligible(target) { return target.type!=="orbital" && (target.type!=="spiral" || spiralState.appearance==="solid") && (target.type!=="contour" || String(target.index).startsWith("accent:")); }
 function resolvedPattern(key) {
   if(patternFills.has(key))return patternFills.get(key);
   const parts=key.split(":");
@@ -25,6 +25,7 @@ function resolvedPattern(key) {
     const layer=modularState.layerData[Number(parts[2])];
     if(!layer.modules[parts[3]+":"+parts[4]]?.colour)return patternFills.get("modular:layer:"+parts[2]);
   }
+  if(parts[0]==="spiral"&&parts.length===2&&!spiralObject(spiralState,Number(parts[1])).colour)return patternFills.get("spiral:group:"+spiralGroup(spiralState,Number(parts[1])));
   if(parts[0]==="triangular"&&parts.length===3&&!triangleState.cells[parts[1]+":"+parts[2]]?.colour)return patternFills.get("triangular:default");
   return undefined;
 }
@@ -40,6 +41,7 @@ function validPatternFills(fills,type) {
     interlocking:/^(?:group:[0-7]|cell:0:[0-7])$/,
     contour:/^contour:accent:[0-5]$/,
     modular:/^modular:(?:layer:[0-3]|module:[0-3]:[0-9]:[0-9])$/,
+    spiral:/^spiral:(?:group:[0-5]|[0-9]|[12][0-9])$/,
     triangular:/^triangular:(?:default|(?:[0-9]|1[01]):(?:[0-9]|1[01]))$/
   }[type];
   return Boolean(keys)&&Object.entries(fills).every(([key,p])=>keys.test(key)&&p&&PATTERN_TYPES.some(([id])=>id===p.type)
@@ -237,7 +239,16 @@ function randomCandidatePatterns(candidate){
   const p={...defaultPattern("#25282a"),type:randomChoice(PATTERN_TYPES.map(([id])=>id)),spacing:randomChoice([10,14,18,22]),weight:randomChoice([2,3,4]),rotation:0};
   const put=(key,colour)=>{result[key]={...p,foreground:colour};};
   const scale=candidate.settings.scale/100;
-  if(candidate.type==="contour"){
+  if(candidate.type==="spiral"){
+    const s=candidate.spiral;
+    // Only the innermost visible solid form is guaranteed not to be
+    // substantially covered by subsequent shapes.
+    if(s.appearance==="solid"){
+      const i=s.count-1,o=spiralGeometry(s,i);
+      const width=2*o.r*(o.sides?Math.cos(Math.PI/o.sides):1);
+      if(o.visible&&generatedPatternFits(width,p,scale))put("spiral:"+i,o.colour);
+    }
+  }else if(candidate.type==="contour"){
     const options=candidate.contour.circles.slice(0,candidate.contour.accents).map((c,i)=>({c,i})).filter(({c})=>c.visible && circleFitsContour(candidate.contour,c) && generatedPatternFits(c.diameter,p,scale));
     if(options.length){const {c,i}=randomChoice(options);put("contour:accent:"+i,c.colour);}
   }else if(candidate.type==="modular"){
