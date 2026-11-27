@@ -81,9 +81,9 @@
           </div>
           <fieldset class="overlap-mode-control">
             <legend>Overlap treatment</legend>
-            <p class="control-help">Choose how groups interact where they cross.</p>
+            <p id="overlap-help" class="control-help">Choose how groups interact where they cross.</p>
             <div class="overlap-mode-options">
-              <label class="overlap-mode-option"><input type="radio" name="overlap-mode" value="normal" checked><span><strong>Standard</strong><small>Draw groups over one another.</small></span></label>
+              <label class="overlap-mode-option"><input type="radio" name="overlap-mode" value="normal" checked><span><strong>Standard</strong><small id="overlap-standard-help">Draw groups over one another.</small></span></label>
               <label class="overlap-mode-option"><input type="radio" name="overlap-mode" value="transparent"><span><strong>Transparent</strong><small>Knock out overlapping areas.</small></span></label>
               <label class="overlap-mode-option"><input type="radio" name="overlap-mode" value="multiply"><span><strong>Multiply</strong><small>Blend colours where they cross.</small></span></label>
             </div>
@@ -134,7 +134,7 @@
                     <label class="position-axis" for="segment-y"><span>Vertical</span><output id="segment-y-output" for="segment-y">0 units</output></label>
                     <input id="segment-y" name="segment-y" type="range" min="-100" max="100" value="0" step="1">
                     <div class="range-ends"><span>Up</span><span>Down</span></div>
-                    <label class="position-axis" for="group-rotation"><span>Group rotation</span><output id="group-rotation-output" for="group-rotation">0°</output></label>
+                    <label class="position-axis" for="group-rotation"><span id="rotation-label">Group rotation</span><output id="group-rotation-output" for="group-rotation">0°</output></label>
                     <input id="group-rotation" name="group-rotation" type="range" min="-180" max="180" value="0" step="1">
                     <div class="range-ends"><span>Counter-clockwise</span><span>Clockwise</span></div>
                   </div>

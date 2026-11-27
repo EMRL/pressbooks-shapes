@@ -173,6 +173,19 @@ function updateDesignChrome() {
   radiatingControls.hidden = !radiating;
   document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = radiating; });
   const title = radiating ? "Radiating composition" : "Concentric composition";
+  document.querySelector("#group-editor-tab").textContent = radiating ? "Band editor" : "Group editor";
+  document.querySelector(".group-panel-help").textContent = radiating
+    ? "Select a band to adjust its colour, position, or visibility."
+    : "Select a group or ring section to adjust its colour, position, or visibility.";
+  document.querySelector("#overlap-help").textContent = radiating
+    ? "Choose how bands interact where they cross."
+    : "Choose how groups interact where they cross.";
+  document.querySelector("#overlap-standard-help").textContent = radiating
+    ? "Draw bands over one another."
+    : "Draw groups over one another.";
+  document.querySelector("#rotation-label").textContent = radiating ? "Band rotation" : "Group rotation";
+  const rotationNumber = rangeNumbers.get("group-rotation");
+  if (rotationNumber) rotationNumber.setAttribute("aria-label", (radiating ? "Band" : "Group") + " rotation numeric value");
   document.title = "Pressbooks Shapes · " + title;
   document.querySelector('meta[name="description"]').setAttribute("content", radiating
     ? "Arrange radiating bands and export them as SVG."
@@ -434,7 +447,7 @@ function openPalette(trigger, type, index) {
     cellEditor.empty.disabled = emptyGroups.has(paletteTarget.segment);
     cellEditor.reset.disabled = !cellColors.has(key) && !emptyCells.has(key);
     paletteActions.emptyLabel.textContent = designTypeSelect.value === "radiating" ? "Empty band" : "Empty section";
-    paletteActions.reset.textContent = "Use group default";
+    paletteActions.reset.textContent = designTypeSelect.value === "radiating" ? "Use band default" : "Use group default";
   } else if (type === "group") {
     cellEditor.empty.checked = emptyGroups.has(index);
     cellEditor.empty.disabled = false;
