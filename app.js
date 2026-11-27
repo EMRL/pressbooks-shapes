@@ -582,7 +582,7 @@ function readSettings() {
     rotation: Number(controls.rotation.value),
     colors: groupColours.slice(0, radiating ? Number(controls.bandCount.value) : Number(controls.segments.value)).map(function (hex) { return hex.toUpperCase(); }),
     dotColor: controls.dotColor.dataset.color.toUpperCase(),
-    dotVisible: controls.dotVisible.checked,
+    dotVisible: !radiating && controls.dotVisible.checked,
     dotX: Number(controls.dotX.value),
     dotY: Number(controls.dotY.value),
     background: controls.background.checked,
@@ -966,13 +966,13 @@ function buildPresetPayload() {
         bandWidthPx: settings.bandWidth,
         baselineY: settings.baselineY
       },
-      centreDot: {
+      ...(settings.type === "concentric" ? { centreDot: {
         visible: settings.dotVisible,
         sizePercent: Math.round(settings.dotSize * 100),
         colour: settings.dotColor,
         horizontalPosition: settings.dotX,
         verticalPosition: settings.dotY
-      }
+      }} : {})
     },
     groups: Array.from({ length: settings.segments }, function (_, segment) {
       const offset = segmentOffsets.get(segment) || { x: 0, y: 0 };
@@ -1047,12 +1047,12 @@ function validatePresetPayload(payload) {
       && isIntegerBetween(radiating.bandLengthPx, 140, 520)
       && isIntegerBetween(radiating.bandWidthPx, 8, 72)
       && isIntegerBetween(radiating.baselineY, 280, 600))
-    && dot
+    && (payload.designType === "radiating" || dot
     && typeof dot.visible === "boolean"
     && isIntegerBetween(dot.sizePercent, 0, 30)
     && isBrandColour(dot.colour)
     && isIntegerBetween(dot.horizontalPosition, -250, 250)
-    && isIntegerBetween(dot.verticalPosition, -250, 250);
+    && isIntegerBetween(dot.verticalPosition, -250, 250));
   if (!settingsValid || !isIntegerBetween(payload.randomSeed, 1, 1000000000)
     || !Array.isArray(payload.groups) || payload.groups.length !== settings.groups) {
     throw new Error("This preset has unsupported settings or Pressbooks colours.");
@@ -1097,11 +1097,13 @@ function applyPresetPayload(payload) {
   controls.variation.value = String(settings.variationPercent);
   controls.scale.value = String(settings.scalePercent);
   controls.rotation.value = String(settings.rotationDegrees);
-  controls.dotVisible.checked = settings.centreDot.visible;
-  controls.dotSize.value = String(settings.centreDot.sizePercent);
-  controls.dotColor.dataset.color = settings.centreDot.colour.toUpperCase();
-  controls.dotX.value = String(settings.centreDot.horizontalPosition);
-  controls.dotY.value = String(settings.centreDot.verticalPosition);
+  if (payload.designType === "concentric") {
+    controls.dotVisible.checked = settings.centreDot.visible;
+    controls.dotSize.value = String(settings.centreDot.sizePercent);
+    controls.dotColor.dataset.color = settings.centreDot.colour.toUpperCase();
+    controls.dotX.value = String(settings.centreDot.horizontalPosition);
+    controls.dotY.value = String(settings.centreDot.verticalPosition);
+  }
   controls.background.checked = settings.background;
   const overlapMode = payload.version === 1
     ? settings.excludeOverlaps ? "transparent" : "normal"
@@ -1234,18 +1236,13 @@ function createRadiatingCandidate() {
     variation: Math.random() < 0.22 ? 0 : randomInteger(4, 24),
     scale: randomInteger(88, 112),
     rotation: randomInteger(0, 359),
-    dotSize: Math.random() < 0.8 ? 0 : randomInteger(6, 18),
-    dotVisible: Math.random() < 0.3,
-    dotX: randomInteger(-20, 20, 5),
-    dotY: randomInteger(-20, 20, 5),
     background: Math.random() < 0.28,
     overlapMode: randomChoice(["normal", "normal", "multiply", "multiply", "transparent"]),
     bandSpan: randomInteger(160, 300, 10),
     fanAngle: randomInteger(20, 56),
     bandLength: randomInteger(260, 440, 10),
     bandWidth: randomInteger(18, 48, 2),
-    baselineY: randomInteger(500, 590, 10),
-    dotColor: randomChoice(BRAND_100_COLOURS)
+    baselineY: randomInteger(500, 590, 10)
   };
   const familyCount = randomInteger(2, Math.min(4, segments));
   const colourFamilies = shuffled(BRAND_PALETTE).slice(0, familyCount);
@@ -1498,15 +1495,7 @@ function evaluateRadiatingCandidate(candidate) {
         coveredBands += 1;
         visibleBands.add(segment);
       }
-      let painted = settings.overlapMode === "transparent" ? coveredBands === 1 : coveredBands > 0;
-      if (settings.dotVisible && settings.dotSize > 0) {
-        const dotX = CENTER + settings.dotX;
-        const dotY = CENTER + settings.dotY;
-        const dotRadius = 245 * scale * settings.dotSize / 100;
-        const dotDx = artX - dotX;
-        const dotDy = artY - dotY;
-        if (dotDx * dotDx + dotDy * dotDy <= dotRadius * dotRadius) painted = true;
-      }
+      const painted = settings.overlapMode === "transparent" ? coveredBands === 1 : coveredBands > 0;
       if (!painted) continue;
       paintedCount += 1;
       sumX += screenX;
@@ -1556,13 +1545,15 @@ function applySurpriseCandidate(candidate) {
   controls.variation.value = String(settings.variation);
   controls.scale.value = String(settings.scale);
   controls.rotation.value = String(settings.rotation);
-  controls.dotSize.value = String(settings.dotSize);
-  controls.dotVisible.checked = settings.dotVisible;
-  controls.dotX.value = String(settings.dotX);
-  controls.dotY.value = String(settings.dotY);
+  if (candidate.type === "concentric") {
+    controls.dotSize.value = String(settings.dotSize);
+    controls.dotVisible.checked = settings.dotVisible;
+    controls.dotX.value = String(settings.dotX);
+    controls.dotY.value = String(settings.dotY);
+    controls.dotColor.dataset.color = settings.dotColor;
+  }
   controls.background.checked = settings.background;
   controls.overlapModes.forEach(function (input) { input.checked = input.value === settings.overlapMode; });
-  controls.dotColor.dataset.color = settings.dotColor;
 
   groupColours.splice(0, groupColours.length, ...candidate.colours);
   cellColors.clear();
