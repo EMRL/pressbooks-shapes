@@ -25,7 +25,7 @@ const controls = {
   dotX: document.querySelector("#dot-x"),
   dotY: document.querySelector("#dot-y"),
   background: document.querySelector("#background"),
-  excludeOverlaps: document.querySelector("#exclude-overlaps")
+  overlapModes: Array.from(document.querySelectorAll('input[name="overlap-mode"]'))
 };
 const outputs = {
   rings: document.querySelector("#rings-output"),
@@ -448,7 +448,7 @@ function readSettings() {
     dotX: Number(controls.dotX.value),
     dotY: Number(controls.dotY.value),
     background: controls.background.checked,
-    excludeOverlaps: controls.excludeOverlaps.checked
+    overlapMode: controls.overlapModes.find(function (input) { return input.checked; }).value
   };
 }
 
@@ -465,6 +465,7 @@ function render() {
   const dotRadius = outerRadius * settings.dotSize;
   const segmentAngle = 360 / settings.segments;
   art.replaceChildren();
+  art.style.isolation = "isolate";
   art.setAttribute("transform", "rotate(" + settings.rotation + " " + CENTER + " " + CENTER + ")");
 
   if (settings.background) {
@@ -521,7 +522,7 @@ function render() {
     groupLayers[item.segment].push(path);
   });
 
-  if (settings.excludeOverlaps) {
+  if (settings.overlapMode === "transparent") {
     const defs = document.createElementNS(SVG_NS, "defs");
     for (let segment = 0; segment < settings.segments; segment += 1) {
       const mask = document.createElementNS(SVG_NS, "mask");
@@ -555,7 +556,8 @@ function render() {
     if (groupLayers[segment].length === 0) continue;
     const group = document.createElementNS(SVG_NS, "g");
     group.dataset.segment = String(segment + 1);
-    if (settings.excludeOverlaps) group.setAttribute("mask", "url(#group-mask-" + (segment + 1) + ")");
+    if (settings.overlapMode === "transparent") group.setAttribute("mask", "url(#group-mask-" + (segment + 1) + ")");
+    if (settings.overlapMode === "multiply") group.style.mixBlendMode = "multiply";
     groupLayers[segment].forEach(function (path) { group.append(path); });
     art.append(group);
   }
@@ -712,7 +714,10 @@ function buildExportSvg() {
   title.textContent = "Pressbooks Shapes concentric ring composition";
   const description = document.createElementNS(SVG_NS, "desc");
   description.setAttribute("id", "export-desc");
-  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups" + (controls.excludeOverlaps.checked ? " with group overlaps made transparent" : "") + ".";
+  const overlapDescription = settings.overlapMode === "transparent"
+    ? " with overlapping areas removed"
+    : settings.overlapMode === "multiply" ? " with overlapping colours multiplied" : "";
+  description.textContent = controls.rings.value + " concentric rings and " + controls.segments.value + " groups" + overlapDescription + ".";
   clone.insertBefore(description, clone.firstChild);
   clone.insertBefore(title, clone.firstChild);
 
@@ -735,7 +740,7 @@ function buildPresetPayload() {
   const settings = readSettings();
   return {
     format: "pressbooks-shapes-preset",
-    version: 1,
+    version: 2,
     designType: "concentric",
     randomSeed: compositionSeed,
     settings: {
@@ -747,7 +752,7 @@ function buildPresetPayload() {
       scalePercent: Math.round(settings.scale * 100),
       rotationDegrees: settings.rotation,
       background: settings.background,
-      excludeOverlaps: settings.excludeOverlaps,
+      overlapMode: settings.overlapMode,
       centreDot: {
         visible: settings.dotVisible,
         sizePercent: Math.round(settings.dotSize * 100),
@@ -800,8 +805,8 @@ function isBrandColour(value) {
 }
 
 function validatePresetPayload(payload) {
-  if (!payload || payload.format !== "pressbooks-shapes-preset" || payload.version !== 1 || payload.designType !== "concentric") {
-    throw new Error("Choose a version 1 Pressbooks Shapes concentric preset JSON file.");
+  if (!payload || payload.format !== "pressbooks-shapes-preset" || ![1, 2].includes(payload.version) || payload.designType !== "concentric") {
+    throw new Error("Choose a supported Pressbooks Shapes concentric preset JSON file.");
   }
 
   const settings = payload.settings;
@@ -815,7 +820,9 @@ function validatePresetPayload(payload) {
     && isIntegerBetween(settings.scalePercent, 70, 150)
     && isIntegerBetween(settings.rotationDegrees, 0, 359)
     && typeof settings.background === "boolean"
-    && typeof settings.excludeOverlaps === "boolean"
+    && (payload.version === 1
+      ? typeof settings.excludeOverlaps === "boolean"
+      : ["normal", "transparent", "multiply"].includes(settings.overlapMode))
     && dot
     && typeof dot.visible === "boolean"
     && isIntegerBetween(dot.sizePercent, 0, 30)
@@ -863,7 +870,10 @@ function applyPresetPayload(payload) {
   controls.dotX.value = String(settings.centreDot.horizontalPosition);
   controls.dotY.value = String(settings.centreDot.verticalPosition);
   controls.background.checked = settings.background;
-  controls.excludeOverlaps.checked = settings.excludeOverlaps;
+  const overlapMode = payload.version === 1
+    ? settings.excludeOverlaps ? "transparent" : "normal"
+    : settings.overlapMode;
+  controls.overlapModes.forEach(function (input) { input.checked = input.value === overlapMode; });
 
   groupColours.splice(0, groupColours.length, ...payload.groups.map(function (group) { return group.colour.toUpperCase(); }));
   cellColors.clear();
@@ -930,7 +940,7 @@ function createSurpriseCandidate() {
     dotX: randomInteger(-30, 30, 5),
     dotY: randomInteger(-30, 30, 5),
     background: Math.random() < 0.28,
-    excludeOverlaps: segments > 1 && Math.random() < 0.22,
+    overlapMode: segments > 1 ? randomChoice(["normal", "normal", "normal", "transparent", "multiply"]) : "normal",
     dotColor: randomChoice(BRAND_100_COLOURS)
   };
   const familyCount = randomInteger(2, Math.min(4, segments));
@@ -1115,7 +1125,7 @@ function measureConcentricCandidate(candidate) {
         visibleSections.add(key);
       }
 
-      let painted = settings.excludeOverlaps ? coveredGroups === 1 : coveredGroups > 0;
+      let painted = settings.overlapMode === "transparent" ? coveredGroups === 1 : coveredGroups > 0;
       if (settings.dotVisible && settings.dotSize > 0) {
         const dotX = CENTER + settings.dotX;
         const dotY = CENTER + settings.dotY;
@@ -1166,7 +1176,7 @@ function applySurpriseCandidate(candidate) {
   controls.dotX.value = String(settings.dotX);
   controls.dotY.value = String(settings.dotY);
   controls.background.checked = settings.background;
-  controls.excludeOverlaps.checked = settings.excludeOverlaps;
+  controls.overlapModes.forEach(function (input) { input.checked = input.value === settings.overlapMode; });
   controls.dotColor.dataset.color = settings.dotColor;
 
   groupColours.splice(0, groupColours.length, ...candidate.colours);

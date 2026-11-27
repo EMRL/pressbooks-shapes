@@ -68,24 +68,35 @@
           <div class="control-group"><div class="control-label"><label for="segments">Groups</label><output id="segments-output" for="segments">4 groups</output></div><input id="segments" name="segments" type="range" min="1" max="8" value="4" step="1"><div class="range-ends"><span>1</span><span>8</span></div></div>
           <div class="control-group"><div class="control-label"><label for="spacing">Ring spacing</label><output id="spacing-output" for="spacing">8 px</output></div><input id="spacing" name="spacing" type="range" min="0" max="24" value="8" step="1"><div class="range-ends"><span>Tight</span><span>Open</span></div></div>
           <div class="control-group"><div class="control-label"><label for="clearance">Inner clearance</label><output id="clearance-output" for="clearance">36% of radius</output></div><input id="clearance" name="clearance" type="range" min="15" max="60" value="36" step="1"><div class="range-ends"><span>Small</span><span>Large</span></div></div>
-          <div class="control-group"><label class="toggle-control" for="exclude-overlaps"><span>Make overlaps transparent</span><span class="toggle-wrap"><input id="exclude-overlaps" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label><p class="control-help">Remove the areas where groups cross.</p></div>
+          <fieldset class="overlap-mode-control">
+            <legend>Overlap treatment</legend>
+            <p class="control-help">Choose how groups interact where they cross.</p>
+            <div class="overlap-mode-options">
+              <label class="overlap-mode-option"><input type="radio" name="overlap-mode" value="normal" checked><span><strong>Standard</strong><small>Draw groups over one another.</small></span></label>
+              <label class="overlap-mode-option"><input type="radio" name="overlap-mode" value="transparent"><span><strong>Transparent</strong><small>Knock out overlapping areas.</small></span></label>
+              <label class="overlap-mode-option"><input type="radio" name="overlap-mode" value="multiply"><span><strong>Multiply</strong><small>Blend colours where they cross.</small></span></label>
+            </div>
+          </fieldset>
           <details class="advanced-controls">
             <summary>Advanced settings</summary>
             <div class="advanced-controls-body">
-              <div class="control-group"><div class="control-label"><label for="dot-size">Centre dot size</label><output id="dot-size-output" for="dot-size">12% of diameter</output></div><input id="dot-size" name="dot-size" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
               <div class="control-group"><div class="control-label"><label for="variation">Variation</label><output id="variation-output" for="variation">0%</output></div><input id="variation" name="variation" type="range" min="0" max="100" value="0" step="1"><div class="range-ends"><span>Even</span><span>Irregular</span></div></div>
               <div class="control-group"><div class="control-label"><span>Band width</span><output id="band-width-output">—</output></div><div class="range-ends"><span>Calculated from ring count, gap, and clearance</span></div></div>
               <div class="control-group"><div class="control-label"><label for="scale">Scale within artboard</label><output id="scale-output" for="scale">100%</output></div><input id="scale" name="scale" type="range" min="70" max="150" value="100" step="1"><div class="range-ends"><span>Fit</span><span>Clip edges</span></div></div>
               <div class="control-group rotation-group"><div class="control-label"><label for="rotation">Whole composition rotation</label><output id="rotation-output" for="rotation">0°</output></div><input id="rotation" name="rotation" type="range" min="0" max="359" value="0" step="1"><p class="control-help">Turn the complete design inside the artboard.</p></div>
-              <div class="bottom-controls">
-                <div class="color-control"><span>Centre dot colour</span><button id="dot-color" class="color-trigger" type="button" data-color="#a7a8a9" aria-label="Centre dot colour: Commons Light 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span class="color-swatch" style="--swatch:#a7a8a9"></span><span class="sr-only">Choose colour</span></button></div>
-                <label class="toggle-control" for="dot-visible"><span>Show centre dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
-                <label class="toggle-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
-              </div>
-              <div class="dot-position-controls">
+              <fieldset class="center-dot-settings">
+                <legend>Centre dot</legend>
+                <div class="control-group"><div class="control-label"><label for="dot-size">Size</label><output id="dot-size-output" for="dot-size">12% of diameter</output></div><input id="dot-size" name="dot-size" type="range" min="0" max="30" value="12" step="1"><div class="range-ends"><span>None</span><span>Large</span></div></div>
+                <div class="dot-appearance-controls">
+                  <div class="color-control"><span>Colour</span><button id="dot-color" class="color-trigger" type="button" data-color="#a7a8a9" aria-label="Centre dot colour: Commons Light 100" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette-popover"><span class="color-swatch" style="--swatch:#a7a8a9"></span><span class="sr-only">Choose colour</span></button></div>
+                  <label class="toggle-control" for="dot-visible"><span>Show centre dot</span><span class="toggle-wrap"><input id="dot-visible" type="checkbox" checked><span class="toggle-track" aria-hidden="true"></span></span></label>
+                </div>
+                <div class="dot-position-controls">
                 <div class="control-group"><div class="control-label"><label for="dot-x">Centre dot horizontal position</label><output id="dot-x-output" for="dot-x">0 units</output></div><input id="dot-x" name="dot-x" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Left</span><span>Right</span></div></div>
                 <div class="control-group"><div class="control-label"><label for="dot-y">Centre dot vertical position</label><output id="dot-y-output" for="dot-y">0 units</output></div><input id="dot-y" name="dot-y" type="range" min="-250" max="250" value="0" step="1"><div class="range-ends"><span>Up</span><span>Down</span></div></div>
-              </div>
+                </div>
+              </fieldset>
+              <label class="toggle-control background-control" for="background"><span>Background</span><span class="toggle-wrap"><input id="background" type="checkbox"><span class="toggle-track" aria-hidden="true"></span></span></label>
             </div>
           </details>
           </section>
