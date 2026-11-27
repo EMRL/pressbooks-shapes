@@ -106,11 +106,16 @@ const circleSizes = new Map();
 const rangeNumbers = new Map();
 let selectedCell = { ring: 0, segment: 0 };
 let activeGroup = 0;
+let hoveredIndependent = null;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
 const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null, modular: null, triangular: null, orbital: null, spiral: null, rhythmic: null };
 let activeDesignType = designTypeSelect.value;
+
+function isIndependentObjectDesign(type = designTypeSelect.value) {
+  return type === "interlocking" || type === "radiating";
+}
 
 function objectName(type = designTypeSelect.value) {
   if(type==="rhythmic")return "line";
@@ -244,13 +249,16 @@ function updateDesignChrome() {
   document.querySelector(".editor-tabs").classList.toggle("is-contour", contour || modular);
   if (editorTabs.find(tab => tab.getAttribute("aria-selected") === "true")?.hidden) activateEditorTab(editorTabs[0], false);
   document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = type !== "concentric"; });
+  document.querySelector(".segment-editor").hidden = radiating || interlocking;
+  document.querySelector("#independent-object-navigation").hidden = !(radiating || interlocking);
+  document.querySelector("#position-title").hidden = radiating || interlocking;
   document.querySelector("#object-rotation").hidden = interlocking;
   document.querySelector("#object-diameter").hidden = !interlocking;
   const title = rhythmic ? "Rhythmic composition" : spiral ? "Spiral composition" : orbital ? "Orbital composition" : triangular ? "Triangular composition" : modular ? "Modular composition" : contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
   document.querySelector("#group-editor-tab").textContent = name + " editor";
   document.querySelector(".group-panel-help").textContent = type === "concentric"
     ? "Select a group or ring section to adjust its colour, position, or visibility."
-    : "Select a " + singular + " to adjust its colour, position, or visibility.";
+    : "Select a " + singular + " to adjust its colour, position, or visibility." + (radiating || interlocking ? " Other objects are dimmed while editing." : "");
   document.querySelector("#overlap-help").textContent = modular ? "Choose how the grids interact where they overlap." : "Choose how " + singular + "s interact where they cross.";
   document.querySelector("#overlap-standard-help").textContent = modular ? "Draw layers over one another." : "Draw " + singular + "s over one another.";
   document.querySelector("#rotation-label").textContent = name + " rotation";
@@ -324,6 +332,8 @@ function activateEditorTab(tab, moveFocus) {
   updateSpiralHighlight();
   hoveredRhythm=null;
   updateRhythmicHighlight();
+  hoveredIndependent=null;
+  updateIndependentHighlight();
   if (moveFocus) tab.focus();
 }
 
@@ -369,7 +379,41 @@ const BRAND_100_COLOURS = BRAND_PALETTE.map(function (family) {
   return family.values.find(function (entry) { return entry[0] === "100"; })[1].toUpperCase();
 });
 
+function selectIndependentObject(index, openEditor = false) {
+  const count=readSettings().segments;
+  activeGroup=(index+count)%count;
+  selectedCell={ring:0,segment:activeGroup};
+  hoveredIndependent=null;
+  pendingGroupIndex=null;
+  groupInspector.classList.remove("is-fading-out");
+  if(openEditor)activateEditorTab(document.querySelector("#group-editor-tab"),false);
+  render();
+}
+
+function updateIndependentHighlight() {
+  const editing=isIndependentObjectDesign() && document.querySelector("#group-editor-tab").getAttribute("aria-selected")==="true";
+  preview.classList.toggle("independent-editing",editing);
+  art.querySelectorAll("[data-independent-outline]").forEach(e=>e.remove());
+  const index=hoveredIndependent??activeGroup;
+  const paths=art.querySelectorAll("path[data-ring][data-segment]");
+  paths.forEach(path=>path.classList.toggle("independent-highlighted",editing&&Number(path.dataset.segment)===index+1));
+  if(!editing)return;
+  const selected=Array.from(paths).find(path=>Number(path.dataset.segment)===index+1);
+  if(!selected)return;
+  // A preview-only outline reveals a selected shape even behind another object.
+  const outline=document.createElementNS(SVG_NS,"path");
+  for(const [key,value] of Object.entries({d:selected.getAttribute("d"),transform:selected.getAttribute("transform"),fill:"none",stroke:"#25282a","stroke-width":1.5,"stroke-dasharray":"5 3","vector-effect":"non-scaling-stroke","pointer-events":"none","data-editor-only":"","data-independent-outline":"","aria-hidden":"true"}))outline.setAttribute(key,value);
+  art.append(outline);
+}
+
+function stripIndependentDecoration(root) {
+  root.classList.remove("independent-editing");
+  root.querySelectorAll(".independent-highlighted").forEach(e=>e.classList.remove("independent-highlighted"));
+  root.querySelectorAll("[data-independent-outline]").forEach(e=>e.remove());
+}
+
 function selectGroup(index) {
+  if(isIndependentObjectDesign()){selectIndependentObject(index);return;}
   if (pendingGroupIndex === null && activeGroup === index) return;
   pendingGroupIndex = index;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -457,22 +501,34 @@ function renderGroupSwatches(count) {
         groupSelectors[index].select.focus();
       }, trigger => {
         selectGroup(index);
-        openPalette(trigger, "group", index);
+        openPalette(trigger, isIndependentObjectDesign() ? "cell" : "group", index);
       }, visible => {
-        if (visible) emptyGroups.delete(index);
-        else emptyGroups.add(index);
-        render();
+        if (isIndependentObjectDesign()) {
+          if(visible){emptyGroups.delete(index);emptyCells.delete(cellKey(0,index));}
+          else emptyGroups.add(index);
+          selectIndependentObject(index);
+        } else {
+          if (visible) emptyGroups.delete(index);
+          else emptyGroups.add(index);
+          render();
+        }
       });
+      selector.card.addEventListener("pointerenter",()=>{if(isIndependentObjectDesign()){hoveredIndependent=index;updateIndependentHighlight();}});
+      selector.card.addEventListener("pointerleave",()=>{if(isIndependentObjectDesign()){hoveredIndependent=null;updateIndependentHighlight();}});
       groupSelectors.push(selector);
       controls.colors.push(selector.select);
       groupPaletteButtons.push(selector.colour);
       groupSwatches.append(selector.card);
     }
   }
+  const independent=isIndependentObjectDesign();
   groupSelectors.forEach((selector, index) => {
-    updateObjectSelector(selector, itemName + " " + (index + 1), groupColours[index], !emptyGroups.has(index), activeGroup === index);
+    const key=cellKey(0,index);
+    const colour=independent?(cellColors.get(key)||groupColours[index]):groupColours[index];
+    const visible=!emptyGroups.has(index)&&(!independent||!emptyCells.has(key));
+    updateObjectSelector(selector, itemName + " " + (index + 1), colour, visible, activeGroup === index);
     selector.select.dataset.color = groupColours[index];
-    paintFillSwatch(selector.colour, "group:"+index);
+    paintFillSwatch(selector.colour, independent?"cell:"+key:"group:"+index);
   });
 }
 
@@ -554,7 +610,7 @@ function choosePaletteColour(hex, pattern = null) {
     updateColourTrigger(controls.dotColor, hex, "Centre dot colour");
   } else {
     cellColors.set(cellKey(target.ring, target.segment), hex.toUpperCase());
-    emptyCells.delete(cellKey(target.ring, target.segment));
+    if(!isIndependentObjectDesign())emptyCells.delete(cellKey(target.ring, target.segment));
   }
   // Keep the fill popover open while rendering the changed artwork. Several
   // editors rebuild their swatches during render, so bind the replacement.
@@ -574,7 +630,7 @@ function refreshLivePalette(target) {
   else if (target.type === "triangular") trigger = trianglePaletteTrigger(target.index);
   else if (target.type === "modular") trigger = modularPaletteTrigger(target.index);
   else if (target.type === "contour") trigger = target.index === "default" ? document.querySelector("#contour-default-colour") : document.querySelector('[data-contour-colour="' + target.index + '"]');
-  else if (target.type === "cell") trigger = segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
+  else if (target.type === "cell") trigger = isIndependentObjectDesign()?groupPaletteButtons[target.segment]:segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
   else if (target.type === "group") trigger = groupPaletteButtons[target.index];
   else trigger = controls.dotColor;
   if (!trigger) { closePalette(false); return; }
@@ -585,6 +641,7 @@ function refreshLivePalette(target) {
 }
 
 function configurePaletteActions(type,index) {
+  if(type==="cell"&&isIndependentObjectDesign()){sectionPaletteActions.hidden=true;return;}
   sectionPaletteActions.hidden = type === "rhythmic" || type === "spiral" || type === "orbital" || type === "dot" || type === "contour" || (type === "modular" && index.startsWith("layer:")) || (type === "triangular" && index === "default");
   if (type === "triangular" && index !== "default") {
     const state = trianglePaletteState(index);
@@ -688,6 +745,7 @@ window.addEventListener("resize", positionPalette);
 document.addEventListener("scroll", positionPalette, true);
 
 function selectCell(ring, segment) {
+  if(isIndependentObjectDesign()){closePalette(false);selectIndependentObject(segment,true);return;}
   selectedCell = { ring, segment };
   render();
   const trigger = segmentGrid.querySelector('.segment-cell[aria-pressed="true"]');
@@ -862,6 +920,7 @@ function createInterlockingCircles(settings) {
 
 function render() {
   renderComposition();
+  updateIndependentHighlight();
   updatePreviewFrame();
 }
 
@@ -939,7 +998,7 @@ function renderComposition() {
     path.setAttribute("aria-label", settings.type !== "concentric"
       ? objectName(settings.type) + " " + (item.segment + 1)
       : "Ring " + (item.ring + 1) + ", group " + (item.segment + 1));
-    if (selectedCell.ring === item.ring && selectedCell.segment === item.segment) path.classList.add("is-selected");
+    if (settings.type === "concentric" && selectedCell.ring === item.ring && selectedCell.segment === item.segment) path.classList.add("is-selected");
     path.addEventListener("click", function () { selectCell(item.ring, item.segment); });
     path.addEventListener("keydown", function (event) {
       if (event.key === "Enter" || event.key === " ") {
@@ -1053,7 +1112,7 @@ function renderSegmentEditor(settings) {
   document.querySelector("#segment-editor-help").textContent = independent
     ? "Choose a " + unit + " to adjust its colour or visibility."
     : "Choose a ring and group. Each section can use its own colour or be left empty.";
-  document.querySelector("#group-palette-legend").textContent = "Default " + unit + " colours";
+  document.querySelector("#group-palette-legend").textContent = independent ? "Individual " + unit + "s" : "Default " + unit + " colours";
   document.querySelector("#position-help").textContent = settings.type === "interlocking"
     ? "Move or resize the selected circle."
     : independent ? "Move or rotate the selected band along the baseline."
@@ -1062,48 +1121,48 @@ function renderSegmentEditor(settings) {
   selectedCell.segment = Math.min(selectedCell.segment, settings.segments - 1);
   activeGroup = Math.min(activeGroup, settings.segments - 1);
   segmentGrid.replaceChildren();
-  segmentGrid.style.setProperty("--segment-columns", String(settings.segments));
+  if (!independent) {
+    segmentGrid.style.setProperty("--segment-columns", String(settings.segments));
 
-  const heading = document.createElement("div");
-  heading.className = "segment-grid-row segment-grid-heading";
-  const corner = document.createElement("span");
-  corner.className = "segment-grid-label";
-  corner.textContent = independent ? labelName : "Ring";
-  heading.append(corner);
-  for (let segment = 0; segment < settings.segments; segment += 1) {
-    const label = document.createElement("span");
-    label.className = "segment-column-label";
-    label.textContent = independent ? String(segment + 1) : "G" + (segment + 1);
-    heading.append(label);
-  }
-  segmentGrid.append(heading);
-
-  for (let ring = 0; ring < settings.rings; ring += 1) {
-    const row = document.createElement("div");
-    row.className = "segment-grid-row";
-    const rowLabel = document.createElement("span");
-    rowLabel.className = "segment-grid-label";
-    rowLabel.textContent = independent ? "Colour" : String(ring + 1);
-    row.append(rowLabel);
-
+    const heading = document.createElement("div");
+    heading.className = "segment-grid-row segment-grid-heading";
+    const corner = document.createElement("span");
+    corner.className = "segment-grid-label";
+    corner.textContent = "Ring";
+    heading.append(corner);
     for (let segment = 0; segment < settings.segments; segment += 1) {
-      const key = cellKey(ring, segment);
-      const empty = emptyGroups.has(segment) || emptyCells.has(key);
-      const cell = document.createElement("button");
-      cell.type = "button";
-      cell.className = "segment-cell" + (empty ? " is-empty" : "");
-      cell.style.setProperty("--cell-color", cellColor(settings, ring, segment));
-      cell.textContent = empty ? "∅" : "";
-      cell.setAttribute("aria-label", independent
-        ? labelName + " " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment))
-        : "Ring " + (ring + 1) + ", group " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
-      paintFillSwatch(cell,"cell:"+ring+":"+segment);
-      cell.setAttribute("aria-pressed", String(selectedCell.ring === ring && selectedCell.segment === segment));
-      if (selectedCell.ring === ring && selectedCell.segment === segment) cell.classList.add("is-selected");
-      cell.addEventListener("click", function () { selectCell(ring, segment); });
-      row.append(cell);
+      const label = document.createElement("span");
+      label.className = "segment-column-label";
+      label.textContent = "G" + (segment + 1);
+      heading.append(label);
     }
-    segmentGrid.append(row);
+    segmentGrid.append(heading);
+
+    for (let ring = 0; ring < settings.rings; ring += 1) {
+      const row = document.createElement("div");
+      row.className = "segment-grid-row";
+      const rowLabel = document.createElement("span");
+      rowLabel.className = "segment-grid-label";
+      rowLabel.textContent = String(ring + 1);
+      row.append(rowLabel);
+
+      for (let segment = 0; segment < settings.segments; segment += 1) {
+        const key = cellKey(ring, segment);
+        const empty = emptyGroups.has(segment) || emptyCells.has(key);
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "segment-cell" + (empty ? " is-empty" : "");
+        cell.style.setProperty("--cell-color", cellColor(settings, ring, segment));
+        cell.textContent = empty ? "∅" : "";
+        cell.setAttribute("aria-label", "Ring " + (ring + 1) + ", group " + (segment + 1) + (empty ? ", empty" : ", " + cellColor(settings, ring, segment)));
+        paintFillSwatch(cell,"cell:"+ring+":"+segment);
+        cell.setAttribute("aria-pressed", String(selectedCell.ring === ring && selectedCell.segment === segment));
+        if (selectedCell.ring === ring && selectedCell.segment === segment) cell.classList.add("is-selected");
+        cell.addEventListener("click", function () { selectCell(ring, segment); });
+        row.append(cell);
+      }
+      segmentGrid.append(row);
+    }
   }
 
   cellEditor.label.textContent = independent
@@ -1111,6 +1170,7 @@ function renderSegmentEditor(settings) {
     : "Ring " + (selectedCell.ring + 1) + " · Group " + (selectedCell.segment + 1);
   const position = segmentOffsets.get(activeGroup) || { x: 0, y: 0 };
   cellEditor.positionTitle.textContent = labelName + " " + (activeGroup + 1);
+  document.querySelector("#independent-object-title").textContent=labelName+" "+(activeGroup+1)+" of "+settings.segments+(emptyGroups.has(activeGroup)||emptyCells.has(cellKey(0,activeGroup))?" (hidden)":"");
   const size = circleSizes.get(activeGroup) || 100;
   document.querySelector("#circle-size").value = String(size);
   document.querySelector("#circle-size-output").value = size + "% of diameter";
@@ -1214,6 +1274,7 @@ function buildExportSvg() {
   stripOrbitalEditorDecoration(clone);
   stripSpiralEditorDecoration(clone);
   stripRhythmicEditorDecoration(clone);
+  stripIndependentDecoration(clone);
   clone.querySelector("#shape-title")?.remove();
   clone.querySelector("#shape-desc")?.remove();
   clone.setAttribute("xmlns", SVG_NS);
@@ -2255,6 +2316,8 @@ document.querySelector("#reset-group-position").addEventListener("click", functi
   segmentRotations.delete(activeGroup);
   render();
 });
+document.querySelector("#independent-prev").addEventListener("click",()=>{closePalette(false);selectIndependentObject(activeGroup-1);});
+document.querySelector("#independent-next").addEventListener("click",()=>{closePalette(false);selectIndependentObject(activeGroup+1);});
 attachNumericInputs();
 initContour();
 initModular();
@@ -2357,6 +2420,7 @@ function updateGalleryThumbnail(type) {
   stripOrbitalEditorDecoration(artwork);
   stripSpiralEditorDecoration(artwork);
   stripRhythmicEditorDecoration(artwork);
+  stripIndependentDecoration(artwork);
   artwork.removeAttribute("id");
   Array.from(artwork.children).filter(e=>e.tagName.toLowerCase()==="rect" && e.getAttribute("width")==="600" && e.getAttribute("height")==="600").forEach(e=>e.style.removeProperty("display"));
   artwork.querySelectorAll("[tabindex], [role], [aria-label], .is-selected").forEach(function (element) {
