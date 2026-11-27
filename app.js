@@ -108,7 +108,7 @@ let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
-const designSnapshots = { concentric: null, radiating: null, interlocking: null };
+const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null };
 let activeDesignType = designTypeSelect.value;
 
 function objectName(type = designTypeSelect.value) {
@@ -149,6 +149,7 @@ function captureDesignState() {
     segmentOffsets: new Map(segmentOffsets),
     segmentRotations: new Map(segmentRotations),
     circleSizes: new Map(circleSizes),
+    contour: contourClone(),
     selectedCell: { ...selectedCell },
     activeGroup: activeGroup,
     compositionSeed: compositionSeed
@@ -183,6 +184,7 @@ function restoreDesignState(snapshot) {
   snapshot.segmentRotations.forEach(function (value, key) { segmentRotations.set(key, value); });
   circleSizes.clear();
   snapshot.circleSizes.forEach(function (value, key) { circleSizes.set(key, value); });
+  restoreContourState(snapshot.contour);
   selectedCell = { ...snapshot.selectedCell };
   activeGroup = snapshot.activeGroup;
   compositionSeed = snapshot.compositionSeed;
@@ -192,15 +194,24 @@ function updateDesignChrome() {
   const type = designTypeSelect.value;
   const radiating = type === "radiating";
   const interlocking = type === "interlocking";
+  const contour = type === "contour";
   const singular = objectName(type);
   const name = singular[0].toUpperCase() + singular.slice(1);
   concentricControls.hidden = type !== "concentric";
   radiatingControls.hidden = !radiating;
   interlockingControls.hidden = !interlocking;
+  document.querySelector("#contour-controls").hidden = !contour;
+  document.querySelector("#variation-control").hidden = contour;
+  document.querySelector(".overlap-mode-control").hidden = contour;
+  document.querySelector("#group-editor-tab").hidden = contour;
+  document.querySelector("#line-editor-tab").hidden = !contour;
+  document.querySelector("#accent-editor-tab").hidden = !contour;
+  document.querySelector(".editor-tabs").classList.toggle("is-contour", contour);
+  if (editorTabs.find(tab => tab.getAttribute("aria-selected") === "true")?.hidden) activateEditorTab(editorTabs[0], false);
   document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = type !== "concentric"; });
   document.querySelector("#object-rotation").hidden = interlocking;
   document.querySelector("#object-diameter").hidden = !interlocking;
-  const title = interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
+  const title = contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
   document.querySelector("#group-editor-tab").textContent = name + " editor";
   document.querySelector(".group-panel-help").textContent = type === "concentric"
     ? "Select a group or ring section to adjust its colour, position, or visibility."
@@ -212,7 +223,7 @@ function updateDesignChrome() {
   if (rotationNumber) rotationNumber.setAttribute("aria-label", name + " rotation numeric value");
   document.title = "Pressbooks Shapes · " + title;
   document.querySelector('meta[name="description"]').setAttribute("content", title + " design and SVG export.");
-  document.querySelector("#intro-description").textContent = interlocking
+  document.querySelector("#intro-description").textContent = contour ? "Arrange parallel contours and accent circles, refine the details, and download your SVG." : interlocking
     ? "Arrange overlapping circles, refine the details, and download your SVG."
     : radiating ? "Arrange radiating bands, refine the details, and download your SVG."
     : "Arrange concentric groups, refine the details, and download your SVG.";
@@ -245,6 +256,7 @@ function setDesignType(type, saveCurrent, restoreTarget) {
     segmentOffsets.clear();
     segmentRotations.clear();
     circleSizes.clear();
+    if (type === "contour") restoreContourState(referenceContourState());
     compositionSeed = 4821;
   }
   selectedCell = { ring: 0, segment: 0 };
@@ -270,14 +282,16 @@ function activateEditorTab(tab, moveFocus) {
 editorTabs.forEach(function (tab, index) {
   tab.addEventListener("click", function () { activateEditorTab(tab, false); });
   tab.addEventListener("keydown", function (event) {
-    let next = index;
-    if (event.key === "ArrowRight") next = (index + 1) % editorTabs.length;
-    else if (event.key === "ArrowLeft") next = (index - 1 + editorTabs.length) % editorTabs.length;
+    const visibleTabs = editorTabs.filter(item => !item.hidden);
+    const current = visibleTabs.indexOf(tab);
+    let next = current;
+    if (event.key === "ArrowRight") next = (current + 1) % visibleTabs.length;
+    else if (event.key === "ArrowLeft") next = (current - 1 + visibleTabs.length) % visibleTabs.length;
     else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = editorTabs.length - 1;
+    else if (event.key === "End") next = visibleTabs.length - 1;
     else return;
     event.preventDefault();
-    activateEditorTab(editorTabs[next], true);
+    activateEditorTab(visibleTabs[next], true);
   });
 });
 
@@ -407,6 +421,7 @@ function cellColor(settings, ring, segment) {
 }
 
 function targetColour(target) {
+  if (target.type === "contour") return contourColour(target.index);
   if (target.type === "group") return controls.colors[target.index].dataset.color;
   if (target.type === "dot") return controls.dotColor.dataset.color;
   const settings = readSettings();
@@ -440,7 +455,9 @@ function closePalette(restoreFocus) {
 function choosePaletteColour(hex) {
   if (!paletteTarget) return;
   const target = paletteTarget;
-  if (target.type === "group") {
+  if (target.type === "contour") {
+    setContourColour(target.index, hex);
+  } else if (target.type === "group") {
     groupColours[target.index] = hex.toUpperCase();
   } else if (target.type === "dot") {
     updateColourTrigger(controls.dotColor, hex, "Centre dot colour");
@@ -450,7 +467,9 @@ function choosePaletteColour(hex) {
   }
   closePalette(false);
   render();
-  if (target.type === "cell") {
+  if (target.type === "contour") {
+    (target.index === "default" ? document.querySelector("#contour-default-colour") : document.querySelector('[data-contour-colour="' + target.index + '"]'))?.focus();
+  } else if (target.type === "cell") {
     segmentGrid.querySelector('.segment-cell[aria-pressed="true"]')?.focus();
   } else if (target.type === "group") {
     controls.colors[target.index]?.focus();
@@ -467,7 +486,7 @@ function openPalette(trigger, type, index) {
   closePalette(false);
   paletteTarget = { trigger, type, index, ring: selectedCell.ring, segment: selectedCell.segment };
   trigger.setAttribute("aria-expanded", "true");
-  sectionPaletteActions.hidden = type === "dot";
+  sectionPaletteActions.hidden = type === "dot" || type === "contour";
   if (type === "cell") {
     const key = cellKey(paletteTarget.ring, paletteTarget.segment);
     cellEditor.empty.checked = emptyGroups.has(paletteTarget.segment) || emptyCells.has(key);
@@ -714,6 +733,7 @@ function createInterlockingCircles(settings) {
 
 function render() {
   const settings = readSettings();
+  if (settings.type === "contour") { renderContour(settings); return; }
   activeGroup = Math.min(activeGroup, settings.segments - 1);
   renderGroupSwatches(settings.segments);
   selectedCell.ring = Math.min(selectedCell.ring, settings.rings - 1);
@@ -869,6 +889,10 @@ function render() {
     ? settings.segments + " " + settings.type + " " + itemName + "s with " + Math.round(settings.variation * 100) + " percent variation."
     : settings.rings + " concentric rings arranged in " + settings.segments + " colour groups, with " + Math.round(settings.variation * 100) + " percent variation.";
   renderSegmentEditor(settings);
+  refreshRangeInputs();
+}
+
+function refreshRangeInputs() {
   document.querySelectorAll('input[type="range"]').forEach(function (input) {
     const min = Number(input.min);
     const max = Number(input.max);
@@ -1014,7 +1038,7 @@ function buildExportSvg() {
   const overlapDescription = settings.overlapMode === "transparent"
     ? " with overlapping areas removed"
     : settings.overlapMode === "multiply" ? " with overlapping colours multiplied" : "";
-  description.textContent = settings.type !== "concentric"
+  description.textContent = settings.type === "contour" ? contourState.count + " parallel contour lines and " + contourState.accents + " accent circles." : settings.type !== "concentric"
     ? settings.segments + " " + settings.type + " " + objectName(settings.type) + "s" + overlapDescription + "."
     : settings.rings + " concentric rings and " + settings.segments + " groups" + overlapDescription + ".";
   clone.insertBefore(description, clone.firstChild);
@@ -1028,7 +1052,7 @@ function downloadSvg() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "pressbooks-" + (designTypeSelect.value === "concentric" ? "concentric-rings" : designTypeSelect.value + "-" + objectName() + "s") + ".svg";
+  anchor.download = "pressbooks-" + (designTypeSelect.value === "concentric" ? "concentric-rings" : designTypeSelect.value === "contour" ? "contour-lines" : designTypeSelect.value + "-" + objectName() + "s") + ".svg";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -1037,6 +1061,11 @@ function downloadSvg() {
 
 function buildPresetPayload() {
   const settings = readSettings();
+  if (settings.type === "contour") return {
+    format: "pressbooks-shapes-preset", version: 2, designType: "contour", randomSeed: compositionSeed,
+    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background},
+    contour: contourClone()
+  };
   return {
     format: "pressbooks-shapes-preset",
     version: 2,
@@ -1115,6 +1144,10 @@ function isBrandColour(value) {
 }
 
 function validatePresetPayload(payload) {
+  if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "contour") {
+    if (!validContourPreset(payload)) throw new Error("This contour preset has unsupported settings or geometry.");
+    return payload;
+  }
   const supportedDesign = payload && (payload.designType === "concentric"
     || payload.version === 2 && ["radiating", "interlocking"].includes(payload.designType));
   if (!payload || payload.format !== "pressbooks-shapes-preset" || ![1, 2].includes(payload.version) || !supportedDesign) {
@@ -1186,6 +1219,11 @@ function validatePresetPayload(payload) {
 function applyPresetPayload(payload) {
   const settings = payload.settings;
   setDesignType(payload.designType, true, false);
+  if (payload.designType === "contour") {
+    applyContourCandidate({contour: payload.contour, seed: payload.randomSeed,
+      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background}});
+    return;
+  }
   controls.rings.value = String(settings.rings);
   controls.segments.value = String(settings.groups);
   if (payload.designType === "radiating") {
@@ -1273,6 +1311,7 @@ async function importPresetFile(file) {
 }
 
 function createSurpriseCandidate(type = designTypeSelect.value) {
+  if (type === "contour") return createContourCandidate();
   if (type === "radiating") return createRadiatingCandidate();
   if (type === "interlocking") return createInterlockingCandidate();
   const rings = randomInteger(3, 8);
@@ -1712,6 +1751,7 @@ function evaluateRadiatingCandidate(candidate) {
 }
 
 function applySurpriseCandidate(candidate) {
+  if (candidate.type === "contour") { applyContourCandidate(candidate); return; }
   const settings = candidate.settings;
   if (candidate.type === "interlocking") {
     controls.circleCount.value = String(settings.segments);
@@ -1764,6 +1804,13 @@ function applySurpriseCandidate(candidate) {
 }
 
 function harmoniousComposition(type) {
+  if (type === "contour") {
+    const candidate = chooseHarmoniousCandidate(createContourCandidate, evaluateContourCandidate, 16, 0.72);
+    if (candidate.quality.valid) return candidate;
+    const fallback = createContourCandidate(true);
+    fallback.quality = evaluateContourCandidate(fallback);
+    return fallback;
+  }
   const candidate = chooseHarmoniousCandidate(
     function () { return createSurpriseCandidate(type); },
     type === "interlocking" ? evaluateInterlockingCandidate : type === "radiating" ? evaluateRadiatingCandidate : evaluateConcentricCandidate,
@@ -1786,6 +1833,10 @@ function generateSurprise() {
   const candidate = harmoniousComposition(designTypeSelect.value);
   applySurpriseCandidate(candidate);
   const settings = candidate.settings;
+  if (candidate.type === "contour") {
+    document.querySelector("#surprise-status").textContent = "New composition generated with " + candidate.contour.count + " parallel lines.";
+    return;
+  }
   document.querySelector("#surprise-status").textContent = independent
     ? "New composition generated with " + settings.segments + " " + objectName() + "s. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100."
     : "New composition generated with " + settings.rings + " rings and " + settings.segments + " groups. Harmony score " + Math.round(candidate.quality?.score * 100 || 0) + " out of 100.";
@@ -1871,6 +1922,7 @@ document.querySelector("#reset-group-position").addEventListener("click", functi
   render();
 });
 attachNumericInputs();
+initContour();
 cellEditor.empty.addEventListener("change", function () {
   if (!paletteTarget) return;
   if (paletteTarget.type === "group") {
