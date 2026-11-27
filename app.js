@@ -350,65 +350,80 @@ function updateColourTrigger(button, hex, label) {
   button.setAttribute("aria-label", label + ": " + paletteLabel(hex));
 }
 
-function groupIconColour(hex) {
-  const rgb = hex.match(/[a-f\d]{2}/gi).map(function (part) {
-    const value = parseInt(part, 16) / 255;
-    return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+// Shared selector card for every composition family. The numbered button
+// selects the object; colour and visibility are independent controls.
+function createObjectSelector(index, label, onSelect, onColour, onVisibility, reset) {
+  const card = document.createElement("div");
+  card.className = "object-selector";
+  const select = document.createElement("button");
+  select.type = "button";
+  select.className = "object-selector-select";
+  select.textContent = String(index + 1);
+  select.addEventListener("click", onSelect);
+  card.addEventListener("click", event => {
+    if (!event.target.closest("button, input, label")) onSelect();
   });
-  const luminance = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
-  return luminance > 0.42 ? "var(--dark-100)" : "var(--surface)";
+  const colour = document.createElement("button");
+  colour.type = "button";
+  colour.className = "color-trigger";
+  colour.setAttribute("aria-haspopup", "dialog");
+  colour.setAttribute("aria-expanded", "false");
+  colour.setAttribute("aria-controls", "palette-popover");
+  const swatch = document.createElement("span");
+  swatch.className = "color-swatch";
+  colour.append(swatch);
+  colour.addEventListener("click", () => onColour(colour));
+  const visible = document.createElement("input");
+  visible.type = "checkbox";
+  visible.addEventListener("change", () => onVisibility(visible.checked));
+  card.append(select, colour, visible);
+  if (reset) card.append(reset);
+  const result = { card, select, colour, visible, reset };
+  return result;
+}
+
+function updateObjectSelector(selector, label, hex, visible, active) {
+  selector.card.classList.toggle("is-active", active);
+  selector.card.classList.toggle("is-empty", !visible);
+  selector.select.setAttribute("aria-label", "Select " + label);
+  selector.select.setAttribute("aria-pressed", String(active));
+  selector.visible.setAttribute("aria-label", "Show " + label);
+  selector.visible.checked = visible;
+  updateColourTrigger(selector.colour, hex, label + " colour");
 }
 
 updateColourTrigger(controls.dotColor, "#a7a8a9", "Centre dot colour");
+const groupSelectors = [];
 
 function renderGroupSwatches(count) {
   const itemName = objectName();
-  while (groupColours.length < count) {
-    groupColours.push(defaultColourFor(groupColours.length));
-  }
-  if (controls.colors.length !== count) {
+  while (groupColours.length < count) groupColours.push(defaultColourFor(groupColours.length));
+  if (groupSelectors.length !== count) {
     groupSwatches.replaceChildren();
     controls.colors = [];
     groupPaletteButtons.length = 0;
-    groupSwatches.style.setProperty("--group-count", String(count));
-    for (let index = 0; index < count; index += 1) {
-      const card = document.createElement("div");
-      card.className = "group-card";
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "group-select";
-      button.setAttribute("aria-label", "Select " + itemName + " " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
-      button.setAttribute("aria-pressed", String(activeGroup === index));
-      button.addEventListener("click", function () {
+    groupSelectors.length = 0;
+    for (let index = 0; index < count; index++) {
+      const selector = createObjectSelector(index, itemName, () => {
         selectGroup(index);
-      });
-      const paletteButton = document.createElement("button");
-      paletteButton.type = "button";
-      paletteButton.className = "group-action group-palette-action";
-      paletteButton.setAttribute("aria-label", "Choose default colour for " + itemName + " " + (index + 1));
-      paletteButton.setAttribute("aria-haspopup", "dialog");
-      paletteButton.setAttribute("aria-expanded", "false");
-      paletteButton.setAttribute("aria-controls", "palette-popover");
-      paletteButton.innerHTML = '<i class="ph-light ph-palette" aria-hidden="true"></i>';
-      paletteButton.addEventListener("click", function () {
+        groupSelectors[index].select.focus();
+      }, trigger => {
         selectGroup(index);
-        openPalette(groupPaletteButtons[index], "group", index);
+        openPalette(trigger, "group", index);
+      }, visible => {
+        if (visible) emptyGroups.delete(index);
+        else emptyGroups.add(index);
+        render();
       });
-      controls.colors.push(button);
-      groupPaletteButtons.push(paletteButton);
-      card.append(button, paletteButton);
-      groupSwatches.append(card);
+      groupSelectors.push(selector);
+      controls.colors.push(selector.select);
+      groupPaletteButtons.push(selector.colour);
+      groupSwatches.append(selector.card);
     }
   }
-  controls.colors.forEach(function (button, index) {
-    updateColourTrigger(button, groupColours[index], itemName[0].toUpperCase() + itemName.slice(1) + " " + (index + 1) + " default colour");
-    button.setAttribute("aria-label", "Select " + itemName + " " + (index + 1) + (emptyGroups.has(index) ? ", empty" : ""));
-    groupPaletteButtons[index].setAttribute("aria-label", "Choose default colour for " + itemName + " " + (index + 1));
-    button.setAttribute("aria-pressed", String(activeGroup === index));
-    button.parentElement.style.setProperty("--swatch", groupColours[index]);
-    button.parentElement.style.setProperty("--group-icon-color", emptyGroups.has(index) ? "var(--dark-100)" : groupIconColour(groupColours[index]));
-    button.parentElement.classList.toggle("is-active", activeGroup === index);
-    button.parentElement.classList.toggle("is-empty", emptyGroups.has(index));
+  groupSelectors.forEach((selector, index) => {
+    updateObjectSelector(selector, itemName + " " + (index + 1), groupColours[index], !emptyGroups.has(index), activeGroup === index);
+    selector.select.dataset.color = groupColours[index];
   });
 }
 
@@ -472,7 +487,7 @@ function choosePaletteColour(hex) {
   } else if (target.type === "cell") {
     segmentGrid.querySelector('.segment-cell[aria-pressed="true"]')?.focus();
   } else if (target.type === "group") {
-    controls.colors[target.index]?.focus();
+    groupPaletteButtons[target.index]?.focus();
   } else {
     controls.dotColor.focus();
   }
@@ -876,9 +891,6 @@ function render() {
   outputs.dotX.value = settings.dotX + " units";
   outputs.dotY.value = settings.dotY + " units";
   const itemName = objectName(settings.type);
-  controls.colors.forEach(function (button, index) {
-    updateColourTrigger(button, button.dataset.color, itemName + " " + (index + 1) + " default colour");
-  });
   updateColourTrigger(controls.dotColor, settings.dotColor, "Centre dot colour");
   document.querySelector("#shape-count").textContent = settings.type !== "concentric"
     ? settings.segments + " " + itemName + "s"
@@ -1961,7 +1973,7 @@ cellEditor.reset.addEventListener("click", function () {
   }
   render();
   closePalette(false);
-  (target.type === "group" ? controls.colors[target.index] : segmentGrid.querySelector('.segment-cell[aria-pressed="true"]'))?.focus();
+  (target.type === "group" ? groupPaletteButtons[target.index] : segmentGrid.querySelector('.segment-cell[aria-pressed="true"]'))?.focus();
 });
 groupInspector.addEventListener("transitionend", function (event) {
   if (event.target !== groupInspector || event.propertyName !== "opacity" || pendingGroupIndex === null) return;
