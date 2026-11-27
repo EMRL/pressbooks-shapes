@@ -108,7 +108,7 @@ let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
-const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null };
+const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null, modular: null };
 let activeDesignType = designTypeSelect.value;
 
 function objectName(type = designTypeSelect.value) {
@@ -150,6 +150,7 @@ function captureDesignState() {
     segmentRotations: new Map(segmentRotations),
     circleSizes: new Map(circleSizes),
     contour: contourClone(),
+    modular: modularClone(),
     selectedCell: { ...selectedCell },
     activeGroup: activeGroup,
     compositionSeed: compositionSeed
@@ -185,6 +186,7 @@ function restoreDesignState(snapshot) {
   circleSizes.clear();
   snapshot.circleSizes.forEach(function (value, key) { circleSizes.set(key, value); });
   restoreContourState(snapshot.contour);
+  restoreModularState(snapshot.modular);
   selectedCell = { ...snapshot.selectedCell };
   activeGroup = snapshot.activeGroup;
   compositionSeed = snapshot.compositionSeed;
@@ -195,35 +197,39 @@ function updateDesignChrome() {
   const radiating = type === "radiating";
   const interlocking = type === "interlocking";
   const contour = type === "contour";
+  const modular = type === "modular";
   const singular = objectName(type);
   const name = singular[0].toUpperCase() + singular.slice(1);
   concentricControls.hidden = type !== "concentric";
   radiatingControls.hidden = !radiating;
   interlockingControls.hidden = !interlocking;
   document.querySelector("#contour-controls").hidden = !contour;
-  document.querySelector("#variation-control").hidden = contour;
+  document.querySelector("#modular-controls").hidden = !modular;
+  document.querySelector("#module-editor-tab").hidden = !modular;
+  document.querySelector("#layer-editor-tab").hidden = !modular;
+  document.querySelector("#variation-control").hidden = contour || modular;
   document.querySelector(".overlap-mode-control").hidden = contour;
-  document.querySelector("#group-editor-tab").hidden = contour;
+  document.querySelector("#group-editor-tab").hidden = contour || modular;
   document.querySelector("#line-editor-tab").hidden = !contour;
   document.querySelector("#accent-editor-tab").hidden = !contour;
-  document.querySelector(".editor-tabs").classList.toggle("is-contour", contour);
+  document.querySelector(".editor-tabs").classList.toggle("is-contour", contour || modular);
   if (editorTabs.find(tab => tab.getAttribute("aria-selected") === "true")?.hidden) activateEditorTab(editorTabs[0], false);
   document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = type !== "concentric"; });
   document.querySelector("#object-rotation").hidden = interlocking;
   document.querySelector("#object-diameter").hidden = !interlocking;
-  const title = contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
+  const title = modular ? "Modular composition" : contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
   document.querySelector("#group-editor-tab").textContent = name + " editor";
   document.querySelector(".group-panel-help").textContent = type === "concentric"
     ? "Select a group or ring section to adjust its colour, position, or visibility."
     : "Select a " + singular + " to adjust its colour, position, or visibility.";
-  document.querySelector("#overlap-help").textContent = "Choose how " + singular + "s interact where they cross.";
-  document.querySelector("#overlap-standard-help").textContent = "Draw " + singular + "s over one another.";
+  document.querySelector("#overlap-help").textContent = modular ? "Choose how the two grids interact where they overlap." : "Choose how " + singular + "s interact where they cross.";
+  document.querySelector("#overlap-standard-help").textContent = modular ? "Draw layers over one another." : "Draw " + singular + "s over one another.";
   document.querySelector("#rotation-label").textContent = name + " rotation";
   const rotationNumber = rangeNumbers.get("group-rotation");
   if (rotationNumber) rotationNumber.setAttribute("aria-label", name + " rotation numeric value");
   document.title = "Pressbooks Shapes · " + title;
   document.querySelector('meta[name="description"]').setAttribute("content", title + " design and SVG export.");
-  document.querySelector("#intro-description").textContent = contour ? "Arrange parallel contours and accent circles, refine the details, and download your SVG." : interlocking
+  document.querySelector("#intro-description").textContent = modular ? "Arrange repeating modules and overlapping grids, refine the details, and download your SVG." : contour ? "Arrange parallel contours and accent circles, refine the details, and download your SVG." : interlocking
     ? "Arrange overlapping circles, refine the details, and download your SVG."
     : radiating ? "Arrange radiating bands, refine the details, and download your SVG."
     : "Arrange concentric groups, refine the details, and download your SVG.";
@@ -257,6 +263,7 @@ function setDesignType(type, saveCurrent, restoreTarget) {
     segmentRotations.clear();
     circleSizes.clear();
     if (type === "contour") restoreContourState(referenceContourState());
+    if (type === "modular") restoreModularState(referenceModularState());
     compositionSeed = 4821;
   }
   selectedCell = { ring: 0, segment: 0 };
@@ -436,6 +443,7 @@ function cellColor(settings, ring, segment) {
 }
 
 function targetColour(target) {
+  if (target.type === "modular") return modularColour(target.index);
   if (target.type === "contour") return contourColour(target.index);
   if (target.type === "group") return controls.colors[target.index].dataset.color;
   if (target.type === "dot") return controls.dotColor.dataset.color;
@@ -470,7 +478,9 @@ function closePalette(restoreFocus) {
 function choosePaletteColour(hex) {
   if (!paletteTarget) return;
   const target = paletteTarget;
-  if (target.type === "contour") {
+  if (target.type === "modular") {
+    setModularColour(target.index, hex);
+  } else if (target.type === "contour") {
     setContourColour(target.index, hex);
   } else if (target.type === "group") {
     groupColours[target.index] = hex.toUpperCase();
@@ -482,7 +492,9 @@ function choosePaletteColour(hex) {
   }
   closePalette(false);
   render();
-  if (target.type === "contour") {
+  if (target.type === "modular") {
+    modularPaletteTrigger(target.index)?.focus();
+  } else if (target.type === "contour") {
     (target.index === "default" ? document.querySelector("#contour-default-colour") : document.querySelector('[data-contour-colour="' + target.index + '"]'))?.focus();
   } else if (target.type === "cell") {
     segmentGrid.querySelector('.segment-cell[aria-pressed="true"]')?.focus();
@@ -501,7 +513,15 @@ function openPalette(trigger, type, index) {
   closePalette(false);
   paletteTarget = { trigger, type, index, ring: selectedCell.ring, segment: selectedCell.segment };
   trigger.setAttribute("aria-expanded", "true");
-  sectionPaletteActions.hidden = type === "dot" || type === "contour";
+  sectionPaletteActions.hidden = type === "dot" || type === "contour" || (type === "modular" && index.startsWith("layer:"));
+  if (type === "modular" && index.startsWith("module:")) {
+    const state = modularPaletteState(index);
+    cellEditor.empty.checked = state.empty;
+    cellEditor.empty.disabled = false;
+    cellEditor.reset.disabled = state.reset;
+    paletteActions.emptyLabel.textContent = "Empty module";
+    paletteActions.reset.textContent = "Use layer default";
+  }
   if (type === "cell") {
     const key = cellKey(paletteTarget.ring, paletteTarget.segment);
     cellEditor.empty.checked = emptyGroups.has(paletteTarget.segment) || emptyCells.has(key);
@@ -748,6 +768,7 @@ function createInterlockingCircles(settings) {
 
 function render() {
   const settings = readSettings();
+  if (settings.type === "modular") { renderModular(settings); return; }
   if (settings.type === "contour") { renderContour(settings); return; }
   activeGroup = Math.min(activeGroup, settings.segments - 1);
   renderGroupSwatches(settings.segments);
@@ -1050,7 +1071,7 @@ function buildExportSvg() {
   const overlapDescription = settings.overlapMode === "transparent"
     ? " with overlapping areas removed"
     : settings.overlapMode === "multiply" ? " with overlapping colours multiplied" : "";
-  description.textContent = settings.type === "contour" ? contourState.count + " parallel contour lines and " + contourState.accents + " accent circles." : settings.type !== "concentric"
+  description.textContent = settings.type === "modular" ? modularState.rows + " rows and " + modularState.columns + " columns of rounded rectangles across " + modularState.layers + " layers" + overlapDescription + "." : settings.type === "contour" ? contourState.count + " parallel contour lines and " + contourState.accents + " accent circles." : settings.type !== "concentric"
     ? settings.segments + " " + settings.type + " " + objectName(settings.type) + "s" + overlapDescription + "."
     : settings.rings + " concentric rings and " + settings.segments + " groups" + overlapDescription + ".";
   clone.insertBefore(description, clone.firstChild);
@@ -1064,7 +1085,7 @@ function downloadSvg() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "pressbooks-" + (designTypeSelect.value === "concentric" ? "concentric-rings" : designTypeSelect.value === "contour" ? "contour-lines" : designTypeSelect.value + "-" + objectName() + "s") + ".svg";
+  anchor.download = "pressbooks-" + (designTypeSelect.value === "concentric" ? "concentric-rings" : designTypeSelect.value === "contour" ? "contour-lines" : designTypeSelect.value === "modular" ? "modular-grid" : designTypeSelect.value + "-" + objectName() + "s") + ".svg";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -1073,6 +1094,11 @@ function downloadSvg() {
 
 function buildPresetPayload() {
   const settings = readSettings();
+  if (settings.type === "modular") return {
+    format: "pressbooks-shapes-preset", version: 2, designType: "modular", randomSeed: compositionSeed,
+    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, overlapMode: settings.overlapMode},
+    modular: modularClone()
+  };
   if (settings.type === "contour") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "contour", randomSeed: compositionSeed,
     settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background},
@@ -1156,6 +1182,10 @@ function isBrandColour(value) {
 }
 
 function validatePresetPayload(payload) {
+  if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "modular") {
+    if (!validModularPreset(payload)) throw new Error("This modular preset has unsupported settings or geometry.");
+    return payload;
+  }
   if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "contour") {
     if (!validContourPreset(payload)) throw new Error("This contour preset has unsupported settings or geometry.");
     return payload;
@@ -1231,6 +1261,11 @@ function validatePresetPayload(payload) {
 function applyPresetPayload(payload) {
   const settings = payload.settings;
   setDesignType(payload.designType, true, false);
+  if (payload.designType === "modular") {
+    applyModularCandidate({modular: payload.modular, seed: payload.randomSeed,
+      settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background, overlapMode: settings.overlapMode}});
+    return;
+  }
   if (payload.designType === "contour") {
     applyContourCandidate({contour: payload.contour, seed: payload.randomSeed,
       settings: {rotation: settings.rotationDegrees, scale: settings.scalePercent, background: settings.background}});
@@ -1323,6 +1358,7 @@ async function importPresetFile(file) {
 }
 
 function createSurpriseCandidate(type = designTypeSelect.value) {
+  if (type === "modular") return createModularCandidate();
   if (type === "contour") return createContourCandidate();
   if (type === "radiating") return createRadiatingCandidate();
   if (type === "interlocking") return createInterlockingCandidate();
@@ -1763,6 +1799,7 @@ function evaluateRadiatingCandidate(candidate) {
 }
 
 function applySurpriseCandidate(candidate) {
+  if (candidate.type === "modular") { applyModularCandidate(candidate); return; }
   if (candidate.type === "contour") { applyContourCandidate(candidate); return; }
   const settings = candidate.settings;
   if (candidate.type === "interlocking") {
@@ -1816,6 +1853,13 @@ function applySurpriseCandidate(candidate) {
 }
 
 function harmoniousComposition(type) {
+  if (type === "modular") {
+    const candidate = chooseHarmoniousCandidate(createModularCandidate, evaluateModularCandidate, 16, 0.72);
+    if (candidate.quality.valid) return candidate;
+    const fallback = createModularCandidate(true);
+    fallback.quality = evaluateModularCandidate(fallback);
+    return fallback;
+  }
   if (type === "contour") {
     const candidate = chooseHarmoniousCandidate(createContourCandidate, evaluateContourCandidate, 16, 0.72);
     if (candidate.quality.valid) return candidate;
@@ -1845,6 +1889,10 @@ function generateSurprise() {
   const candidate = harmoniousComposition(designTypeSelect.value);
   applySurpriseCandidate(candidate);
   const settings = candidate.settings;
+  if (candidate.type === "modular") {
+    document.querySelector("#surprise-status").textContent = "New composition generated with " + candidate.modular.rows + " rows and " + candidate.modular.columns + " columns.";
+    return;
+  }
   if (candidate.type === "contour") {
     document.querySelector("#surprise-status").textContent = "New composition generated with " + candidate.contour.count + " parallel lines.";
     return;
@@ -1935,8 +1983,18 @@ document.querySelector("#reset-group-position").addEventListener("click", functi
 });
 attachNumericInputs();
 initContour();
+initModular();
 cellEditor.empty.addEventListener("change", function () {
   if (!paletteTarget) return;
+  if (paletteTarget.type === "modular") {
+    const key = paletteTarget.index;
+    setModularEmpty(key, cellEditor.empty.checked);
+    closePalette(false);
+    render();
+    const trigger = modularPaletteTrigger(key);
+    if (trigger) openPalette(trigger, "modular", key);
+    return;
+  }
   if (paletteTarget.type === "group") {
     if (cellEditor.empty.checked) emptyGroups.add(paletteTarget.index);
     else emptyGroups.delete(paletteTarget.index);
@@ -1963,6 +2021,13 @@ cellEditor.empty.addEventListener("change", function () {
 cellEditor.reset.addEventListener("click", function () {
   if (!paletteTarget) return;
   const target = paletteTarget;
+  if (target.type === "modular") {
+    resetModularModule(target.index);
+    closePalette(false);
+    render();
+    modularPaletteTrigger(target.index)?.focus();
+    return;
+  }
   if (target.type === "cell") {
     cellColors.delete(cellKey(target.ring, target.segment));
     emptyCells.delete(cellKey(target.ring, target.segment));

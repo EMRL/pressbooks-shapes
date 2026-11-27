@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/light/style.css">
     <link rel="stylesheet" href="styles.css">
     <script src="contour.js" defer></script>
+    <script src="modular.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -60,10 +61,10 @@
           <span class="gallery-art"><img alt="" id="gallery-contour"></span>
           <span class="gallery-card-details"><span><strong>Contour composition</strong><small>Parallel lines and geometric rhythm</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
         </button>
-        <div class="gallery-card is-unavailable">
-          <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><circle cx="165" cy="165" r="100" fill="#a7a8a9"/><circle cx="165" cy="435" r="100" fill="#cacbcb"/><path d="M310 65H535V265Z" fill="#7c7e7f"/><path d="M310 335H535A112.5 112.5 0 0 1 310 335" fill="#a7a8a9"/></svg></span>
-          <span class="gallery-card-details"><span><strong>Modular composition</strong><small>Geometric fields and intersections</small></span><span class="coming-soon">Coming soon</span></span>
-        </div>
+        <button class="gallery-card" type="button" data-design="modular">
+          <span class="gallery-art"><img alt="" id="gallery-modular"></span>
+          <span class="gallery-card-details"><span><strong>Modular composition</strong><small>Repeating grids and layered intersections</small></span><i class="ph-light ph-arrow-right" aria-hidden="true"></i></span>
+        </button>
         <div class="gallery-card is-unavailable">
           <span class="gallery-art"><svg viewBox="0 0 600 600" aria-hidden="true"><g fill="none" stroke="#a7a8a9" stroke-width="34"><circle cx="0" cy="600" r="490"/><circle cx="0" cy="600" r="425"/><circle cx="0" cy="600" r="360"/><circle cx="0" cy="600" r="295"/></g></svg></span>
           <span class="gallery-card-details"><span><strong>Cropped composition</strong><small>Oversized shapes and negative space</small></span><span class="coming-soon">Coming soon</span></span>
@@ -73,7 +74,7 @@
     </main>
     <main id="main" class="layout" hidden>
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option disabled>Modular · coming soon</option><option disabled>Cropped · coming soon</option></select></h1>
+        <h1 id="page-title"><label class="design-type-label" for="design-type">Design type</label><select id="design-type" aria-label="Design type"><option value="concentric" selected>Concentric composition</option><option value="radiating">Radiating composition</option><option value="interlocking">Interlocking composition</option><option value="contour">Contour composition</option><option value="modular">Modular composition</option><option disabled>Cropped · coming soon</option></select></h1>
         <p id="intro-description">Arrange concentric groups, refine the details, and download your SVG.</p>
       </section>
       <div class="workspace">
@@ -95,6 +96,8 @@
           <div class="editor-tabs" role="tablist" aria-label="Control panels">
             <button id="design-controls-tab" class="editor-tab" type="button" role="tab" aria-selected="true" aria-controls="design-controls-panel" tabindex="0">Design controls</button>
             <button id="group-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="group-editor-panel" tabindex="-1">Group editor</button>
+            <button id="module-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="module-editor-panel" tabindex="-1" hidden>Module editor</button>
+            <button id="layer-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="layer-editor-panel" tabindex="-1" hidden>Layer editor</button>
             <button id="line-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="line-editor-panel" tabindex="-1" hidden>Line editor</button>
             <button id="accent-editor-tab" class="editor-tab" type="button" role="tab" aria-selected="false" aria-controls="accent-editor-panel" tabindex="-1" hidden>Circle editor</button>
           </div>
@@ -136,6 +139,20 @@
             <div class="control-group" id="contour-accents-row"><div class="control-label"><label for="contour-accents">Accent circles</label><output id="contour-accents-output">4 </output></div><input id="contour-accents" type="range" min="0" max="6" value="4" step="1"></div>
             <p class="control-help">Line spacing and radius adjust together to keep the contours parallel and prevent crossings.</p>
             <button type="button" class="reset-position-button" id="reference-contour"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
+          </div>
+          <div id="modular-controls" hidden>
+            <h3 class="control-section-title">Composition</h3>
+            <div class="control-group"><label for="modular-arrangement">Arrangement</label><select id="modular-arrangement" class="arrangement-select"><option value="offset">Offset</option><option value="aligned">Aligned</option><option value="staggered">Staggered</option><option value="checkerboard">Checkerboard</option></select></div>
+            <div class="control-group"><div class="control-label"><label for="modular-columns">Columns</label><output id="modular-columns-output">4 </output></div><input id="modular-columns" type="range" min="2" max="10" value="4" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="modular-rows">Rows</label><output id="modular-rows-output">4 </output></div><input id="modular-rows" type="range" min="2" max="10" value="4" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="modular-width">Module width</label><output id="modular-width-output">170 px</output></div><input id="modular-width" type="range" min="30" max="300" value="170" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="modular-height">Module height</label><output id="modular-height-output">170 px</output></div><input id="modular-height" type="range" min="30" max="300" value="170" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="modular-radius">Corner radius</label><output id="modular-radius-output">40 %</output></div><input id="modular-radius" type="range" min="0" max="100" value="40" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="modular-gap-x">Horizontal spacing</label><output id="modular-gap-x-output">9 px</output></div><input id="modular-gap-x" type="range" min="0" max="100" value="9" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="modular-gap-y">Vertical spacing</label><output id="modular-gap-y-output">9 px</output></div><input id="modular-gap-y" type="range" min="0" max="100" value="9" step="1"></div>
+            <div class="control-group"><div class="control-label"><label for="modular-layers">Layers</label><output id="modular-layers-output">2 </output></div><input id="modular-layers" type="range" min="1" max="2" value="2" step="1"></div>
+            <p class="control-help">Adjust layer positions in the Layer editor. Each grid keeps consistent module sizes and spacing.</p>
+            <button type="button" class="reset-position-button" id="reference-modular"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reference layout</button>
           </div>
           <fieldset class="overlap-mode-control">
             <legend>Overlap treatment</legend>
@@ -216,6 +233,22 @@
               <label class="position-axis" for="contour-accent-size"><span>Diameter</span><output id="contour-accent-size-output"></output></label><input id="contour-accent-size" type="range" min="10" max="350" value="100" step="1">
               <label class="position-axis" for="contour-accent-x"><span>Horizontal</span><output id="contour-accent-x-output"></output></label><input id="contour-accent-x" type="range" min="-450" max="450" value="0" step="1">
               <label class="position-axis" for="contour-accent-y"><span>Vertical</span><output id="contour-accent-y-output"></output></label><input id="contour-accent-y" type="range" min="-450" max="450" value="0" step="1">
+            </div>
+          </section>
+          <section id="module-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="module-editor-tab" hidden>
+            <p class="group-panel-help">Select a layer and module to change its colour or visibility.</p>
+            <div class="control-group"><label for="modular-module-layer">Layer</label><select id="modular-module-layer" class="arrangement-select"></select></div>
+            <div class="control-label"><strong>Individual modules</strong><output id="modular-selected-cell"></output></div>
+            <div id="modular-grid" class="modular-grid" aria-label="Module colour grid"></div>
+          </section>
+          <section id="layer-editor-panel" class="editor-tab-panel" role="tabpanel" aria-labelledby="layer-editor-tab" hidden>
+            <p class="group-panel-help">Choose a layer to adjust its default colour, visibility, position or opacity.</p>
+            <div id="modular-layer-list" class="palette-swatches"></div>
+            <div class="modular-layer-controls">
+              <div class="control-label"><strong id="modular-layer-title">Layer 1</strong><button class="reset-position-button" id="reset-modular-layer" type="button"><i class="ph-light ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset position</button></div>
+              <label class="position-axis" for="modular-layer-x"><span>Horizontal offset</span><output id="modular-layer-x-output"></output></label><input id="modular-layer-x" type="range" min="-300" max="300" value="0" step="1">
+              <label class="position-axis" for="modular-layer-y"><span>Vertical offset</span><output id="modular-layer-y-output"></output></label><input id="modular-layer-y" type="range" min="-300" max="300" value="0" step="1">
+              <label class="position-axis" for="modular-layer-opacity"><span>Opacity</span><output id="modular-layer-opacity-output"></output></label><input id="modular-layer-opacity" type="range" min="0" max="100" value="100" step="1">
             </div>
           </section>
         </aside>
