@@ -222,15 +222,34 @@ function renderContourEditors() {
   for (let i = 0; i < state.accents; i++) {
     const circle = state.circles[i];
     const item = document.createElement("div");
-    item.className = "contour-line-item" + (i === activeContourAccent ? " is-active" : "");
+    item.className = "contour-line-item contour-accent-item" + (i === activeContourAccent ? " is-active" : "");
     const select = document.createElement("button");
     select.type = "button";
     select.className = "contour-accent-select";
     select.textContent = String(i + 1);
     select.setAttribute("aria-label", "Select circle " + (i + 1));
     select.setAttribute("aria-pressed", String(i === activeContourAccent));
-    select.addEventListener("click", () => { activeContourAccent = i; render(); circleList.querySelectorAll(".contour-accent-select")[i]?.focus(); });
-    item.append(select, contourColourButton("accent:" + i, "Circle " + (i + 1) + " colour"), contourVisibility(circle, "circle " + (i + 1), "contour-circle-visible-" + i));
+    const selectCircle = () => {
+      activeContourAccent = i;
+      closePalette(false);
+      render();
+      circleList.querySelectorAll(".contour-accent-select")[i]?.focus();
+    };
+    select.addEventListener("click", selectCircle);
+    item.addEventListener("click", event => {
+      if (!event.target.closest("button, input, label")) selectCircle();
+    });
+    const colour = contourColourButton("accent:" + i, "Circle " + (i + 1) + " colour");
+    // Selecting a colour should also make that circle the active one.
+    colour.addEventListener("click", () => {
+      if (activeContourAccent === i) return;
+      activeContourAccent = i;
+      closePalette(false);
+      render();
+      const trigger = circleList.querySelector('[data-contour-colour="accent:' + i + '"]');
+      if (trigger) openPalette(trigger, "contour", "accent:" + i);
+    });
+    item.append(select, colour, contourVisibility(circle, "circle " + (i + 1), "contour-circle-visible-" + i));
     circleList.append(item);
   }
   document.querySelector("#contour-accent-controls").hidden = !state.accents;
