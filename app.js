@@ -109,10 +109,11 @@ let activeGroup = 0;
 let paletteTarget = null;
 let pendingGroupIndex = null;
 let compositionSeed = 4821;
-const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null, modular: null, triangular: null, orbital: null, spiral: null };
+const designSnapshots = { concentric: null, radiating: null, interlocking: null, contour: null, modular: null, triangular: null, orbital: null, spiral: null, rhythmic: null };
 let activeDesignType = designTypeSelect.value;
 
 function objectName(type = designTypeSelect.value) {
+  if(type==="rhythmic")return "line";
   if(type==="spiral")return "shape";
   return ["interlocking","orbital"].includes(type) ? "circle" : type === "radiating" ? "band" : "group";
 }
@@ -156,6 +157,7 @@ function captureDesignState() {
     triangular: triangleClone(),
     orbital: orbitalClone(),
     spiral: spiralClone(),
+    rhythmic: rhythmicClone(),
     patterns: clonePatternFills(),
     selectedCell: { ...selectedCell },
     activeGroup: activeGroup,
@@ -196,6 +198,7 @@ function restoreDesignState(snapshot) {
   restoreTriangleState(snapshot.triangular);
   restoreOrbitalState(snapshot.orbital);
   restoreSpiralState(snapshot.spiral);
+  restoreRhythmicState(snapshot.rhythmic);
   restorePatternFills(snapshot.patterns);
   selectedCell = { ...snapshot.selectedCell };
   activeGroup = snapshot.activeGroup;
@@ -215,6 +218,9 @@ function updateDesignChrome() {
   const triangular = type === "triangular";
   const orbital = type === "orbital";
   const spiral = type === "spiral";
+  const rhythmic = type === "rhythmic";
+  document.querySelector("#rhythmic-controls").hidden = !rhythmic;
+  document.querySelector("#rhythmic-editor-tab").hidden = !rhythmic;
   document.querySelector("#spiral-controls").hidden = !spiral;
   document.querySelector("#spiral-editor-tab").hidden = !spiral;
   document.querySelector("#orbital-controls").hidden = !orbital;
@@ -230,9 +236,9 @@ function updateDesignChrome() {
   document.querySelector("#triangle-editor-tab").hidden = !triangular;
   document.querySelector("#module-editor-tab").hidden = !modular;
   document.querySelector("#layer-editor-tab").hidden = !modular;
-  document.querySelector("#variation-control").hidden = contour || modular || triangular || orbital || spiral;
-  document.querySelector(".overlap-mode-control").hidden = contour || triangular;
-  document.querySelector("#group-editor-tab").hidden = contour || modular || triangular || orbital || spiral;
+  document.querySelector("#variation-control").hidden = contour || modular || triangular || orbital || spiral || rhythmic;
+  document.querySelector(".overlap-mode-control").hidden = contour || triangular || rhythmic;
+  document.querySelector("#group-editor-tab").hidden = contour || modular || triangular || orbital || spiral || rhythmic;
   document.querySelector("#line-editor-tab").hidden = !contour;
   document.querySelector("#accent-editor-tab").hidden = !contour;
   document.querySelector(".editor-tabs").classList.toggle("is-contour", contour || modular);
@@ -240,7 +246,7 @@ function updateDesignChrome() {
   document.querySelectorAll(".concentric-only").forEach(function (element) { element.hidden = type !== "concentric"; });
   document.querySelector("#object-rotation").hidden = interlocking;
   document.querySelector("#object-diameter").hidden = !interlocking;
-  const title = spiral ? "Spiral composition" : orbital ? "Orbital composition" : triangular ? "Triangular composition" : modular ? "Modular composition" : contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
+  const title = rhythmic ? "Rhythmic composition" : spiral ? "Spiral composition" : orbital ? "Orbital composition" : triangular ? "Triangular composition" : modular ? "Modular composition" : contour ? "Contour composition" : interlocking ? "Interlocking composition" : radiating ? "Radiating composition" : "Concentric composition";
   document.querySelector("#group-editor-tab").textContent = name + " editor";
   document.querySelector(".group-panel-help").textContent = type === "concentric"
     ? "Select a group or ring section to adjust its colour, position, or visibility."
@@ -252,7 +258,7 @@ function updateDesignChrome() {
   if (rotationNumber) rotationNumber.setAttribute("aria-label", name + " rotation numeric value");
   document.title = "Pressbooks Shapes · " + title;
   document.querySelector('meta[name="description"]').setAttribute("content", title + " design and SVG export.");
-  document.querySelector("#intro-description").textContent = spiral ? "Arrange progressively scaled and rotated shapes, refine the details, and download your SVG." : orbital ? "Arrange circular outlines, refine the details, and download your SVG." : triangular ? "Arrange proportional triangles, refine the details, and download your SVG." : modular ? "Arrange repeating modules and overlapping grids, refine the details, and download your SVG." : contour ? "Arrange parallel contours and accent circles, refine the details, and download your SVG." : interlocking
+  document.querySelector("#intro-description").textContent = rhythmic ? "Arrange coordinated directional fields, refine the details, and download your SVG." : spiral ? "Arrange progressively scaled and rotated shapes, refine the details, and download your SVG." : orbital ? "Arrange circular outlines, refine the details, and download your SVG." : triangular ? "Arrange proportional triangles, refine the details, and download your SVG." : modular ? "Arrange repeating modules and overlapping grids, refine the details, and download your SVG." : contour ? "Arrange parallel contours and accent circles, refine the details, and download your SVG." : interlocking
     ? "Arrange overlapping circles, refine the details, and download your SVG."
     : radiating ? "Arrange radiating bands, refine the details, and download your SVG."
     : "Arrange concentric groups, refine the details, and download your SVG.";
@@ -291,6 +297,7 @@ function setDesignType(type, saveCurrent, restoreTarget) {
     if (type === "triangular") restoreTriangleState(referenceTriangleState());
     if (type === "orbital") restoreOrbitalState(referenceOrbitalState());
     if (type === "spiral") restoreSpiralState(referenceSpiralState());
+    if (type === "rhythmic") restoreRhythmicState(referenceRhythmicState());
     controls.showAll.checked = false;
     compositionSeed = 4821;
   }
@@ -315,6 +322,8 @@ function activateEditorTab(tab, moveFocus) {
   updateOrbitalHighlight();
   hoveredSpiral=null;
   updateSpiralHighlight();
+  hoveredRhythm=null;
+  updateRhythmicHighlight();
   if (moveFocus) tab.focus();
 }
 
@@ -476,6 +485,7 @@ function cellColor(settings, ring, segment) {
 }
 
 function targetColour(target) {
+  if (target.type === "rhythmic") return rhythmicColour(target.index);
   if (target.type === "spiral") return spiralColour(target.index);
   if (target.type === "orbital") return orbitalColour(target.index);
   if (target.type === "triangular") return triangleColour(target.index);
@@ -523,7 +533,10 @@ function choosePaletteColour(hex, pattern = null) {
     if (pattern) patternFills.set(patternKey(target), pattern);
     else patternFills.delete(patternKey(target));
   }
-  if (target.type === "spiral") {
+  if (target.type === "rhythmic") {
+    if(String(target.index).startsWith("group:")) rhythmicState.colours[Number(target.index.split(":")[1])] = hex;
+    else rhythmicOverride(target.index).colour = hex;
+  } else if (target.type === "spiral") {
     if(String(target.index).startsWith("group:")) spiralState.colours[Number(target.index.split(":")[1])] = hex;
     else spiralOverride(target.index).colour = hex;
   } else if (target.type === "orbital") {
@@ -555,7 +568,8 @@ function choosePaletteColour(hex, pattern = null) {
 
 function refreshLivePalette(target) {
   let trigger;
-  if (target.type === "spiral") trigger = document.querySelector('[data-spiral-colour="'+target.index+'"]');
+  if (target.type === "rhythmic") trigger = document.querySelector('[data-rhythmic-colour="'+target.index+'"]');
+  else if (target.type === "spiral") trigger = document.querySelector('[data-spiral-colour="'+target.index+'"]');
   else if (target.type === "orbital") trigger = document.querySelector('[data-orbital-colour="'+target.index+'"]');
   else if (target.type === "triangular") trigger = trianglePaletteTrigger(target.index);
   else if (target.type === "modular") trigger = modularPaletteTrigger(target.index);
@@ -571,7 +585,7 @@ function refreshLivePalette(target) {
 }
 
 function configurePaletteActions(type,index) {
-  sectionPaletteActions.hidden = type === "spiral" || type === "orbital" || type === "dot" || type === "contour" || (type === "modular" && index.startsWith("layer:")) || (type === "triangular" && index === "default");
+  sectionPaletteActions.hidden = type === "rhythmic" || type === "spiral" || type === "orbital" || type === "dot" || type === "contour" || (type === "modular" && index.startsWith("layer:")) || (type === "triangular" && index === "default");
   if (type === "triangular" && index !== "default") {
     const state = trianglePaletteState(index);
     cellEditor.empty.checked = state.empty;
@@ -854,6 +868,7 @@ function render() {
 function renderComposition() {
   beginPatternRender();
   const settings = readSettings();
+  if (settings.type === "rhythmic") { renderRhythmic(settings); return; }
   if (settings.type === "spiral") { renderSpiral(settings); return; }
   if (settings.type === "orbital") { renderOrbital(settings); return; }
   if (settings.type === "triangular") { renderTriangular(settings); return; }
@@ -1198,6 +1213,7 @@ function buildExportSvg() {
   const clone = preview.cloneNode(true);
   stripOrbitalEditorDecoration(clone);
   stripSpiralEditorDecoration(clone);
+  stripRhythmicEditorDecoration(clone);
   clone.querySelector("#shape-title")?.remove();
   clone.querySelector("#shape-desc")?.remove();
   clone.setAttribute("xmlns", SVG_NS);
@@ -1217,7 +1233,7 @@ function buildExportSvg() {
   const overlapDescription = settings.overlapMode === "transparent"
     ? " with overlapping areas removed"
     : settings.overlapMode === "multiply" ? " with overlapping colours multiplied" : "";
-  description.textContent = settings.type === "spiral" ? spiralState.count + " nested " + spiralState.shape + " shapes" + overlapDescription + "." : settings.type === "orbital" ? orbitalState.count + " circular outlines" + overlapDescription + "." : settings.type === "triangular" ? triangleState.rows + " rows and " + triangleState.columns + " columns of proportional right triangles." : settings.type === "modular" ? modularState.rows + " rows and " + modularState.columns + " columns of rounded rectangles across " + modularState.layers + " layers" + overlapDescription + "." : settings.type === "contour" ? contourState.count + " parallel contour lines and " + contourState.accents + " accent circles." : settings.type !== "concentric"
+  description.textContent = settings.type === "rhythmic" ? rhythmicState.count + " coordinated lines in a " + rhythmicState.arrangement + " arrangement." : settings.type === "spiral" ? spiralState.count + " nested " + spiralState.shape + " shapes" + overlapDescription + "." : settings.type === "orbital" ? orbitalState.count + " circular outlines" + overlapDescription + "." : settings.type === "triangular" ? triangleState.rows + " rows and " + triangleState.columns + " columns of proportional right triangles." : settings.type === "modular" ? modularState.rows + " rows and " + modularState.columns + " columns of rounded rectangles across " + modularState.layers + " layers" + overlapDescription + "." : settings.type === "contour" ? contourState.count + " parallel contour lines and " + contourState.accents + " accent circles." : settings.type !== "concentric"
     ? settings.segments + " " + settings.type + " " + objectName(settings.type) + "s" + overlapDescription + "."
     : settings.rings + " concentric rings and " + settings.segments + " groups" + overlapDescription + ".";
   clone.insertBefore(description, clone.firstChild);
@@ -1240,6 +1256,11 @@ function downloadSvg() {
 
 function buildPresetPayload() {
   const settings = readSettings();
+  if (settings.type === "rhythmic") return {
+    format: "pressbooks-shapes-preset", version: 2, designType: "rhythmic", randomSeed: compositionSeed,
+    settings: {rotationDegrees: settings.rotation, scalePercent: Math.round(settings.scale * 100), background: settings.background, showAll: settings.showAll},
+    rhythmic: rhythmicClone()
+  };
   if (settings.type === "spiral") return {
     format: "pressbooks-shapes-preset", version: 2, designType: "spiral", randomSeed: compositionSeed,
     patterns: clonePatternFills(),
@@ -1354,6 +1375,10 @@ function validatePresetPayload(payload) {
     if (!validOrbitalPreset(payload)) throw new Error("This orbital preset has unsupported settings or geometry.");
     return payload;
   }
+  if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "rhythmic") {
+    if (!validRhythmicPreset(payload)) throw new Error("This rhythmic preset has unsupported settings or geometry.");
+    return payload;
+  }
   if (payload && !validPatternFills(payload.patterns,payload.designType)) throw new Error("This preset has unsupported pattern fills.");
   if (payload?.format === "pressbooks-shapes-preset" && payload.designType === "spiral") {
     if (!validSpiralPreset(payload)) throw new Error("This spiral preset has unsupported settings or geometry.");
@@ -1443,6 +1468,10 @@ function applyPresetPayload(payload) {
   const settings = payload.settings;
   setDesignType(payload.designType, true, false);
   controls.showAll.checked = Boolean(settings.showAll);
+  if (payload.designType === "rhythmic") {
+    applyRhythmicCandidate({rhythmic:payload.rhythmic,seed:payload.randomSeed,settings:{rotation:settings.rotationDegrees,scale:settings.scalePercent,background:settings.background}});
+    return;
+  }
   if (payload.designType === "spiral") {
     applySpiralCandidate({spiral:payload.spiral,seed:payload.randomSeed,patterns:payload.patterns,settings:{rotation:settings.rotationDegrees,scale:settings.scalePercent,background:settings.background,overlapMode:settings.overlapMode}});
     return;
@@ -1554,6 +1583,7 @@ async function importPresetFile(file) {
 }
 
 function createSurpriseCandidate(type = designTypeSelect.value) {
+  if (type === "rhythmic") return createRhythmicCandidate();
   if (type === "spiral") return createSpiralCandidate();
   if (type === "triangular") return createTriangularCandidate();
   if (type === "modular") return createModularCandidate();
@@ -1998,6 +2028,7 @@ function evaluateRadiatingCandidate(candidate) {
 
 function applySurpriseCandidate(candidate) {
   restorePatternFills(candidate.patterns);
+  if (candidate.type === "rhythmic") { applyRhythmicCandidate(candidate); return; }
   if (candidate.type === "spiral") { applySpiralCandidate(candidate); return; }
   if (candidate.type === "orbital") { applyOrbitalCandidate(candidate); return; }
   if (candidate.type === "triangular") { applyTriangularCandidate(candidate); return; }
@@ -2061,6 +2092,10 @@ function harmoniousComposition(type) {
 }
 
 function baseHarmoniousComposition(type) {
+  if (type === "rhythmic") {
+    const c=chooseHarmoniousCandidate(createRhythmicCandidate,evaluateRhythmicCandidate,16,.72);
+    return c.quality.valid ? c : createRhythmicCandidate(true);
+  }
   if (type === "spiral") {
     const c=chooseHarmoniousCandidate(createSpiralCandidate,evaluateSpiralCandidate,16,.72);
     return c.quality.valid ? c : createSpiralCandidate(true);
@@ -2112,6 +2147,10 @@ function generateSurprise() {
   const candidate = harmoniousComposition(designTypeSelect.value);
   applySurpriseCandidate(candidate);
   const settings = candidate.settings;
+  if (candidate.type === "rhythmic") {
+    document.querySelector("#surprise-status").textContent = "New composition generated with " + candidate.rhythmic.count + " directional lines.";
+    return;
+  }
   if (candidate.type === "spiral") {
     document.querySelector("#surprise-status").textContent = "New composition generated with " + candidate.spiral.count + " nested shapes.";
     return;
@@ -2222,6 +2261,7 @@ initModular();
 initTriangular();
 initOrbital();
 initSpiral();
+initRhythmic();
 initFillEditor();
 cellEditor.empty.addEventListener("change", function () {
   if (!paletteTarget) return;
@@ -2316,6 +2356,7 @@ function updateGalleryThumbnail(type) {
   const artwork = art.cloneNode(true);
   stripOrbitalEditorDecoration(artwork);
   stripSpiralEditorDecoration(artwork);
+  stripRhythmicEditorDecoration(artwork);
   artwork.removeAttribute("id");
   Array.from(artwork.children).filter(e=>e.tagName.toLowerCase()==="rect" && e.getAttribute("width")==="600" && e.getAttribute("height")==="600").forEach(e=>e.style.removeProperty("display"));
   artwork.querySelectorAll("[tabindex], [role], [aria-label], .is-selected").forEach(function (element) {
@@ -2385,6 +2426,7 @@ document.querySelector(".brand").addEventListener("click", function (event) {
   showHome();
 });
 document.querySelector("#shuffle-gallery").addEventListener("click", function () { shuffleGallery(); });
+document.querySelector("#shuffle-gallery-bottom").addEventListener("click", function () { shuffleGallery(); });
 document.querySelectorAll(".gallery-card[data-design]").forEach(function (card) {
   card.addEventListener("click", function () { showEditor(card.dataset.design); });
 });
